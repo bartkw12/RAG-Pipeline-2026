@@ -1,0 +1,52 @@
+# Strict allowlist: by default ignore everything.
+*
+
+# Keep directory traversal enabled so allowlist patterns can match nested files.
+!*/
+
+# Allow only these files/types to be tracked.
+!.gitignore
+!**/*.py
+
+# Never track secrets/config, even if names change.
+config_V*.json
+config.local.json
+config.local.*
+.env
+.env.*
+
+# Never track data, caches, binaries, generated outputs, notebooks, logs, envs.
+.git/
+.venv/
+venv/
+ENV/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+*.ipynb
+*.log
+
+Archive/
+cache/
+graphTest/
+lib/
+logs/
+Parsing Output/
+STEP 1A) Inputs/
+STEP 1B) Outputs/
+STEP 2A) Inputs/
+STEP 2B) Outputs/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
