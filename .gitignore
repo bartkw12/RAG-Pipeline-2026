@@ -6,14 +6,22 @@
 
 # Allow only these files/types to be tracked.
 !.gitignore
+!.env.example
 !**/*.py
 
 # Never track secrets/config, even if names change.
 config_V*.json
+config*.json
 config.local.json
 config.local.*
 .env
 .env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Never track data, caches, binaries, generated outputs, notebooks, logs, envs.
 .git/
