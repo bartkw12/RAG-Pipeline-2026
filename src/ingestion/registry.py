@@ -52,5 +52,15 @@ class FileStatus(str, Enum):
     UNCHANGED = "unchanged"    # same content hash already registered
     MODIFIED = "modified"      # same filename seen before, but content changed
 
+@dataclass
+class RegistryEntry:
+    """One record in the ingestion registry."""
 
-#@dataclass for one record in ingestion registry
+    doc_id: str                 # SHA-256 hex of file bytes
+    filename: str               # original file name (stem + suffix)
+    source_path: str            # absolute path at time of ingestion
+    size_bytes: int
+    ingested_at: str            # ISO-8601 UTC timestamp
+    hash: str                   # duplicate of doc_id (explicit for clarity)
+
+
