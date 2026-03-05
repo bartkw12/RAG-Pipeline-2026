@@ -43,5 +43,14 @@ def compute_file_hash(path: Path) -> str:
             sha.update(chunk)
     return sha.hexdigest()
 
+# ── Data classes ────────────────────────────────────────────────
+
+class FileStatus(str, Enum):
+    """Result of checking a file against the registry."""
+
+    NEW = "new"                # never seen before
+    UNCHANGED = "unchanged"    # same content hash already registered
+    MODIFIED = "modified"      # same filename seen before, but content changed
 
 
+#@dataclass for one record in ingestion registry
