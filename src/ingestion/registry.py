@@ -71,3 +71,25 @@ class CheckResult:
     doc_id: str                 # hash of the file being checked
     message: str                # human-readable explanation
     existing_entry: RegistryEntry | None = None   # populated for UNCHANGED / MODIFIED
+
+    # ── Registry class ──────────────────────────────────────────────
+
+@dataclass
+class IngestionRegistry:
+    """In-memory registry backed by a JSON file on disk.
+
+    Typical usage::
+
+        registry = IngestionRegistry.load()
+
+        for path in selected_files:
+            result = registry.check_file(path)
+            if result.status == FileStatus.UNCHANGED:
+                print(result.message)   # "Skipped (unchanged): spec.pdf"
+                continue
+            # … parse the file …
+            registry.register_file(path)
+
+        registry.save()
+    """
+    pass
