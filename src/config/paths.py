@@ -10,8 +10,8 @@ INPUT_DIR = Path(os.getenv("RAG_INPUT_DIR", PROJECT_ROOT / "input")).resolve()
 CACHE_DIR = Path(os.getenv("RAG_CACHE_DIR", PROJECT_ROOT / "cache")).resolve()
 
 MARKDOWN_DIR = CACHE_DIR / "markdown"
-CHUNKS_DIR = CACHE_DIR / "chunks"
-EMBED_DIR = CACHE_DIR / "embeddings"
+CHUNKS_DIR = CACHE_DIR / "chunk"
+EMBED_DIR = CACHE_DIR / "embed"
 META_DIR = CACHE_DIR / "meta"
 
 def ensure_dirs() -> None:
@@ -19,4 +19,3 @@ def ensure_dirs() -> None:
     for d in (CACHE_DIR, MARKDOWN_DIR, CHUNKS_DIR, EMBED_DIR, META_DIR):
         d.mkdir(parents=True, exist_ok=True)
 
-    
