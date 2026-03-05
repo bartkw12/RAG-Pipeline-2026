@@ -63,4 +63,11 @@ class RegistryEntry:
     ingested_at: str            # ISO-8601 UTC timestamp
     hash: str                   # duplicate of doc_id (explicit for clarity)
 
+@dataclass
+class CheckResult:
+    """Returned by ``check_file`` so callers know what happened and why."""
 
+    status: FileStatus
+    doc_id: str                 # hash of the file being checked
+    message: str                # human-readable explanation
+    existing_entry: RegistryEntry | None = None   # populated for UNCHANGED / MODIFIED
