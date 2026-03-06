@@ -55,7 +55,7 @@ class SelectionResult:
     skipped: list[Path] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
-    # ── Internal helpers ────────────────────────────────────────────
+# ── Internal helpers ────────────────────────────────────────────
 
 
 def _is_supported(path: Path) -> bool:
@@ -69,3 +69,23 @@ def _resolve_and_validate(path: Path) -> Path | None:
     if resolved.is_file():
         return resolved
     return None
+
+def _expand_globs(patterns: Iterable[str], root: Path | None = None) -> set[Path]:
+    """Expand a list of glob patterns into resolved file paths.
+
+    If *root* is given, patterns are treated as relative to *root*.
+    Otherwise they are treated as-is (absolute or cwd-relative).
+    """
+    out: set[Path] = set()
+    for pattern in patterns:
+        base = root or Path(".")
+        # Path.glob expects a relative pattern
+        try:
+            for match in base.glob(pattern):
+                resolved = match.resolve()
+                if resolved.is_file():
+                    out.add(resolved)
+        except (OSError, ValueError) as exc:
+            logger.warning("Glob pattern '%s' failed: %s", pattern, exc)
+    return out
+
