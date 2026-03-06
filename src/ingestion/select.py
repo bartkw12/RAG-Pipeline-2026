@@ -54,3 +54,18 @@ class SelectionResult:
     files: list[Path]
     skipped: list[Path] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+
+    # ── Internal helpers ────────────────────────────────────────────
+
+
+def _is_supported(path: Path) -> bool:
+    """Check whether a file has a supported extension."""
+    return path.suffix.lower() in SUPPORTED_EXTENSIONS
+
+
+def _resolve_and_validate(path: Path) -> Path | None:
+    """Resolve a path and return it only if it's an existing file."""
+    resolved = path.expanduser().resolve()
+    if resolved.is_file():
+        return resolved
+    return None
