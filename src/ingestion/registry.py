@@ -204,3 +204,15 @@ class IngestionRegistry:
             del self.entries[stale]
             logger.debug("Removed stale registry entry %s for '%s'.",
                          stale[:12], path.name)
+
+        entry = RegistryEntry(
+            doc_id=file_hash,
+            filename=path.name,
+            source_path=str(path.resolve()),
+            size_bytes=path.stat().st_size,
+            ingested_at=datetime.now(timezone.utc).isoformat(),
+            hash=file_hash,
+        )
+        self.entries[file_hash] = entry
+        logger.info("Registered '%s' (hash %s…).", path.name, file_hash[:12])
+        return file_hash
