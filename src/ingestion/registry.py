@@ -92,4 +92,32 @@ class IngestionRegistry:
 
         registry.save()
     """
-    pass
+
+    entries: dict[str, RegistryEntry] = field(default_factory=dict)
+    _path: Path = field(default_factory=lambda: REGISTRY_FILE, repr=False)
+
+    # ── Persistence ─────────────────────────────────────────────
+
+    @classmethod
+    def load(cls, path: Path | None = None) -> IngestionRegistry:
+        """Load registry from disk.  Returns an empty registry if the file
+        doesn't exist yet (first run)."""
+        path = path or REGISTRY_FILE
+        if not path.exists():
+            logger.info("No existing registry found — starting fresh.")
+            return cls(_path=path)
+
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Registry file is corrupt or unreadable (%s). "
+                           "Starting with an empty registry.", exc)
+            return cls(_path=path)
+
+        entries: dict[str, RegistryEntry] = {}
+        for doc_id, data in raw.items():
+            try:
+                entries[doc_id] = RegistryEntry(**data)
+            except TypeError:
+                logger.warning("Skipping malformed registry entry: %s", doc_id)
+        return cls(entries=entries, _path=path)
