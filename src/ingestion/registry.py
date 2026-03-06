@@ -45,12 +45,14 @@ def compute_file_hash(path: Path) -> str:
 
 # ── Data classes ────────────────────────────────────────────────
 
+
 class FileStatus(str, Enum):
     """Result of checking a file against the registry."""
 
     NEW = "new"                # never seen before
     UNCHANGED = "unchanged"    # same content hash already registered
     MODIFIED = "modified"      # same filename seen before, but content changed
+
 
 @dataclass
 class RegistryEntry:
@@ -63,6 +65,7 @@ class RegistryEntry:
     ingested_at: str            # ISO-8601 UTC timestamp
     hash: str                   # duplicate of doc_id (explicit for clarity)
 
+
 @dataclass
 class CheckResult:
     """Returned by ``check_file`` so callers know what happened and why."""
@@ -72,7 +75,9 @@ class CheckResult:
     message: str                # human-readable explanation
     existing_entry: RegistryEntry | None = None   # populated for UNCHANGED / MODIFIED
 
-    # ── Registry class ──────────────────────────────────────────────
+
+# ── Registry class ──────────────────────────────────────────────
+
 
 @dataclass
 class IngestionRegistry:
@@ -173,13 +178,13 @@ class IngestionRegistry:
                     ),
                     existing_entry=existing,
                 )
-    
+
         # Case 3: completely new file
-            return CheckResult(
-                status=FileStatus.NEW,
-                doc_id=file_hash,
-                message=f"New file: '{path.name}' — queued for ingestion.",
-            )
+        return CheckResult(
+            status=FileStatus.NEW,
+            doc_id=file_hash,
+            message=f"New file: '{path.name}' — queued for ingestion.",
+        )
 
     def register_file(self, path: Path, *, doc_id: str | None = None) -> str:
         """Record a file as successfully ingested.
@@ -216,3 +221,16 @@ class IngestionRegistry:
         self.entries[file_hash] = entry
         logger.info("Registered '%s' (hash %s…).", path.name, file_hash[:12])
         return file_hash
+
+    # ── Convenience ─────────────────────────────────────────────
+
+    def is_already_ingested(self, path: Path) -> bool:
+        """Quick boolean check — True if the file's content hash is in the
+        registry."""
+        return compute_file_hash(path) in self.entries
+
+    def __len__(self) -> int:
+        return len(self.entries)
+
+    def __contains__(self, doc_id: str) -> bool:
+        return doc_id in self.entries
