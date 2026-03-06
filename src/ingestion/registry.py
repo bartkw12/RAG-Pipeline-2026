@@ -180,3 +180,27 @@ class IngestionRegistry:
                 doc_id=file_hash,
                 message=f"New file: '{path.name}' — queued for ingestion.",
             )
+
+    def register_file(self, path: Path, *, doc_id: str | None = None) -> str:
+        """Record a file as successfully ingested.
+
+        If ``doc_id`` is not provided it will be computed (hashed) again.
+        Pass the ``doc_id`` from a prior ``check_file`` call to avoid
+        double-hashing.
+
+        If the file was previously ingested under a different hash (modified
+        content), the old entry is removed automatically.
+
+        Returns the ``doc_id``.
+        """
+        file_hash = doc_id or compute_file_hash(path)
+
+        # Remove any stale entry for the same filename (handles MODIFIED case)
+        stale_ids = [
+            did for did, e in self.entries.items()
+            if e.filename == path.name and did != file_hash
+        ]
+        for stale in stale_ids:
+            del self.entries[stale]
+            logger.debug("Removed stale registry entry %s for '%s'.",
+                         stale[:12], path.name)
