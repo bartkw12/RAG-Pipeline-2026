@@ -160,4 +160,17 @@ class IngestionRegistry:
                 ),
                 existing_entry=existing,
             )
+
+        # Case 2: same filename but different hash → content was updated
+        for existing in self.entries.values():
+            if existing.filename == path.name and existing.hash != file_hash:
+                return CheckResult(
+                    status=FileStatus.MODIFIED,
+                    doc_id=file_hash,
+                    message=(
+                        f"Re-ingesting (modified): '{path.name}' — content "
+                        f"changed since last ingestion on {existing.ingested_at}."
+                    ),
+                    existing_entry=existing,
+                )
     
