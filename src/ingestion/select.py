@@ -38,3 +38,19 @@ class SelectionMode(str, Enum):
     MANIFEST = "manifest"    # loaded from a manifest JSON file
     DROP_FOLDER = "drop_folder"  # scanned from INPUT_DIR
 
+
+@dataclass(frozen=True)
+class SelectionResult:
+    """Outcome of document selection.
+
+    Attributes:
+        mode:       Which selection method was used.
+        files:      Resolved, deduplicated, sorted list of file paths to ingest.
+        skipped:    Files that were found but excluded (wrong extension, etc.).
+        warnings:   Human-readable messages about issues encountered.
+    """
+
+    mode: SelectionMode
+    files: list[Path]
+    skipped: list[Path] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
