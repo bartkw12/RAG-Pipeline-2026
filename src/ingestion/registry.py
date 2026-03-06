@@ -121,3 +121,18 @@ class IngestionRegistry:
             except TypeError:
                 logger.warning("Skipping malformed registry entry: %s", doc_id)
         return cls(entries=entries, _path=path)
+
+    def save(self) -> None:
+        """Persist the current registry to disk (atomic-ish write)."""
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self._path.with_suffix(".tmp")
+        tmp.write_text(
+            json.dumps(
+                {doc_id: asdict(entry) for doc_id, entry in self.entries.items()},
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        tmp.replace(self._path)          # atomic on same filesystem
+        logger.info("Registry saved (%d entries).", len(self.entries))
+        
