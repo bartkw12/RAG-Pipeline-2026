@@ -135,4 +135,29 @@ class IngestionRegistry:
         )
         tmp.replace(self._path)          # atomic on same filesystem
         logger.info("Registry saved (%d entries).", len(self.entries))
-        
+
+    # ── Core operations ─────────────────────────────────────────
+
+    def check_file(self, path: Path) -> CheckResult:
+        """Check a file against the registry **without** registering it.
+
+        Returns a ``CheckResult`` with a ``status`` field the caller can
+        branch on, plus a human-readable ``message`` suitable for logging
+        or displaying to the user.
+        """
+        file_hash = compute_file_hash(path)
+
+        # Case 1: exact content already ingested
+        if file_hash in self.entries:
+            existing = self.entries[file_hash]
+            return CheckResult(
+                status=FileStatus.UNCHANGED,
+                doc_id=file_hash,
+                message=(
+                    f"Skipped (unchanged): '{path.name}' — identical content "
+                    f"was already ingested as '{existing.filename}' "
+                    f"on {existing.ingested_at}."
+                ),
+                existing_entry=existing,
+            )
+    
