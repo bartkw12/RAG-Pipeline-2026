@@ -27,3 +27,14 @@ from typing import Iterable
 from config.paths import INPUT_DIR, MANIFEST_DEFAULT, SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
+
+# ── Public types ────────────────────────────────────────────────
+
+
+class SelectionMode(str, Enum):
+    """How the documents were selected."""
+
+    CLI = "cli"              # explicit paths / globs from CLI args
+    MANIFEST = "manifest"    # loaded from a manifest JSON file
+    DROP_FOLDER = "drop_folder"  # scanned from INPUT_DIR
+
