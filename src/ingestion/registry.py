@@ -174,3 +174,9 @@ class IngestionRegistry:
                     existing_entry=existing,
                 )
     
+        # Case 3: completely new file
+            return CheckResult(
+                status=FileStatus.NEW,
+                doc_id=file_hash,
+                message=f"New file: '{path.name}' — queued for ingestion.",
+            )
