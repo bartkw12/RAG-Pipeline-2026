@@ -89,3 +89,15 @@ def _expand_globs(patterns: Iterable[str], root: Path | None = None) -> set[Path
             logger.warning("Glob pattern '%s' failed: %s", pattern, exc)
     return out
 
+def _filter_supported(
+    paths: Iterable[Path],
+) -> tuple[list[Path], list[Path]]:
+    """Split paths into (supported, skipped) and sort each list."""
+    supported: list[Path] = []
+    skipped: list[Path] = []
+    for p in paths:
+        if _is_supported(p):
+            supported.append(p)
+        else:
+            skipped.append(p)
+    return sorted(set(supported)), sorted(set(skipped))
