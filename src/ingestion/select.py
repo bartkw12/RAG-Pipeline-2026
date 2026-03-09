@@ -180,5 +180,14 @@ def _select_from_manifest(manifest_path: Path) -> SelectionResult:
             warnings=warnings,
         )
 
+    # Parse manifest fields
+    roots = [Path(r).expanduser().resolve() for r in data.get("roots", [])]
+    if not roots:
+        roots = [INPUT_DIR]
+
+    include_patterns: list[str] = data.get("include", [])
+    exclude_patterns: list[str] = data.get("exclude", [])
+    explicit_files: list[str] = data.get("files", [])
+
 
 
