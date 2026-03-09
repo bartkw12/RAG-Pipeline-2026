@@ -189,5 +189,10 @@ def _select_from_manifest(manifest_path: Path) -> SelectionResult:
     exclude_patterns: list[str] = data.get("exclude", [])
     explicit_files: list[str] = data.get("files", [])
 
+    # Validate roots exist
+    for root in roots:
+        if not root.is_dir():
+            warnings.append(f"Manifest root directory does not exist: '{root}'")
+
 
 
