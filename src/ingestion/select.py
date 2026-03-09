@@ -327,6 +327,18 @@ def select_documents(
         Contains the resolved file list, selection mode, any skipped files,
         and warning messages.
     """
-    pass
+    # ── Mode 1: CLI paths (highest priority) ────────────────────
+    if cli_paths:
+        logger.info("Selection mode: CLI (%d path(s)/pattern(s) provided).",
+                     len(cli_paths))
+        return _select_from_cli(cli_paths)
 
-    
+    # ── Mode 2: Manifest ────────────────────────────────────────
+    if manifest_path is not None:
+        logger.info("Selection mode: manifest ('%s').", manifest_path)
+        return _select_from_manifest(manifest_path)
+
+    # ── Mode 3: Drop folder (default) ──────────────────────────
+    folder = input_dir or INPUT_DIR
+    logger.info("Selection mode: drop folder ('%s').", folder)
+    return _select_from_drop_folder(folder)
