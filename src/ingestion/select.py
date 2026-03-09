@@ -145,3 +145,22 @@ def _select_from_cli(cli_paths: list[str]) -> SelectionResult:
         warnings=warnings,
     )
 
+def _select_from_manifest(manifest_path: Path) -> SelectionResult:
+    """Load a manifest JSON and resolve the files it describes.
+
+    Manifest format::
+
+        {
+            "roots": ["./input"],
+            "include": ["**/*.pdf", "**/*.docx"],
+            "exclude": ["**/~$*.docx", "**/draft_*"],
+            "files":  ["C:/Engineering/Special/spec-1234.pdf"]
+        }
+
+    All keys are optional.  ``roots`` defaults to ``INPUT_DIR``.
+    ``include`` defaults to all supported extensions.
+    """
+    pass
+
+
+
