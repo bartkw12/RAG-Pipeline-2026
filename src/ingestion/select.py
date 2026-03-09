@@ -105,6 +105,9 @@ def _filter_supported(
 # ── Selection strategies ────────────────────────────────────────
 
 
+# ── Selection strategies ────────────────────────────────────────
+
+
 def _select_from_cli(cli_paths: list[str]) -> SelectionResult:
     """Resolve explicit CLI paths and glob patterns."""
     warnings: list[str] = []
@@ -127,3 +130,18 @@ def _select_from_cli(cli_paths: list[str]) -> SelectionResult:
                 warnings.append(f"Path not found or not a file: '{raw}'")
 
     supported, skipped = _filter_supported(candidates)
+
+    if skipped:
+        exts = ", ".join(sorted({p.suffix for p in skipped}))
+        warnings.append(
+            f"{len(skipped)} file(s) skipped — unsupported extension(s): {exts}. "
+            f"Supported: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+        )
+
+    return SelectionResult(
+        mode=SelectionMode.CLI,
+        files=supported,
+        skipped=skipped,
+        warnings=warnings,
+    )
+
