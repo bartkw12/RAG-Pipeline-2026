@@ -282,4 +282,11 @@ def _select_from_drop_folder(input_dir: Path) -> SelectionResult:
         warnings=warnings,
     )
 
-
+def _is_child_of(child: Path, parent: Path) -> bool:
+    """Return True if *child* is strictly inside *parent*."""
+    try:
+        child.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+    
