@@ -241,6 +241,45 @@ def _select_from_manifest(manifest_path: Path) -> SelectionResult:
         warnings=warnings,
     )
 
+def _select_from_drop_folder(input_dir: Path) -> SelectionResult:
+    """Recursively scan the input directory for supported files.
 
+    Ignores the ``processed/`` subdirectory so already-ingested files that
+    were moved there aren't re-discovered.
+    """
+    warnings: list[str] = []
+
+    if not input_dir.is_dir():
+        warnings.append(f"Input directory does not exist: '{input_dir}'")
+        return SelectionResult(
+            mode=SelectionMode.DROP_FOLDER,
+            files=[],
+            warnings=warnings,
+        )
+
+    processed_dir = (input_dir / "processed").resolve()
+    candidates: list[Path] = []
+
+    for p in input_dir.rglob("*"):
+        resolved = p.resolve()
+        # Skip anything inside the processed/ subfolder
+        if resolved == processed_dir or _is_child_of(resolved, processed_dir):
+            continue
+        if resolved.is_file() and _is_supported(resolved):
+            candidates.append(resolved)
+
+    files = sorted(set(candidates))
+
+    if not files:
+        warnings.append(
+            f"No supported files found in '{input_dir}'. "
+            f"Supported extensions: {', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+        )
+
+    return SelectionResult(
+        mode=SelectionMode.DROP_FOLDER,
+        files=files,
+        warnings=warnings,
+    )
 
 
