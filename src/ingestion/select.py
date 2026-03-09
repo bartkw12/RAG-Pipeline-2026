@@ -194,5 +194,53 @@ def _select_from_manifest(manifest_path: Path) -> SelectionResult:
         if not root.is_dir():
             warnings.append(f"Manifest root directory does not exist: '{root}'")
 
+    # 1. Collect explicit files
+    candidates: set[Path] = set()
+    for f in explicit_files:
+        resolved = _resolve_and_validate(Path(f))
+        if resolved:
+            candidates.add(resolved)
+        else:
+            warnings.append(f"Manifest explicit file not found: '{f}'")
+
+    # 2. Expand include patterns (or default to all supported types)
+    if include_patterns:
+        for root in roots:
+            if root.is_dir():
+                candidates |= _expand_globs(include_patterns, root=root)
+    else:
+        # Default: include all supported extensions under each root
+        default_patterns = [f"**/*{ext}" for ext in sorted(SUPPORTED_EXTENSIONS)]
+        for root in roots:
+            if root.is_dir():
+                candidates |= _expand_globs(default_patterns, root=root)
+
+    # 3. Apply exclude patterns
+    excluded: set[Path] = set()
+    for root in roots:
+        if root.is_dir():
+            excluded |= _expand_globs(exclude_patterns, root=root)
+
+    candidates -= excluded
+
+    if excluded:
+        logger.debug("Manifest excludes removed %d file(s).", len(excluded))
+
+    supported, skipped = _filter_supported(candidates)
+
+    if skipped:
+        exts = ", ".join(sorted({p.suffix for p in skipped}))
+        warnings.append(
+            f"{len(skipped)} file(s) skipped — unsupported extension(s): {exts}."
+        )
+
+    return SelectionResult(
+        mode=SelectionMode.MANIFEST,
+        files=supported,
+        skipped=skipped,
+        warnings=warnings,
+    )
+
+
 
 
