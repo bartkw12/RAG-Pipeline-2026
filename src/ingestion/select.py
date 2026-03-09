@@ -289,4 +289,44 @@ def _is_child_of(child: Path, parent: Path) -> bool:
         return True
     except ValueError:
         return False
+
+# ── Main entry point ────────────────────────────────────────────
+
+
+def select_documents(
+    *,
+    cli_paths: list[str] | None = None,
+    manifest_path: Path | None = None,
+    input_dir: Path | None = None,
+) -> SelectionResult:
+    """Select documents for ingestion using strict precedence.
+
+    Priority (highest first):
+
+    1. ``cli_paths`` — explicit file paths / glob patterns from CLI.
+    2. ``manifest_path`` — path to a manifest JSON file.
+    3. Drop folder scan of ``input_dir`` (defaults to ``INPUT_DIR``).
+
+    Only **one** mode is active per call.  If ``cli_paths`` is provided,
+    the manifest and drop folder are ignored entirely.
+
+    Parameters
+    ----------
+    cli_paths:
+        List of file paths or glob patterns (e.g. ``["*.pdf", "D:/specs/doc.docx"]``).
+    manifest_path:
+        Path to a JSON manifest file.  Falls back to ``MANIFEST_DEFAULT``
+        only if the caller explicitly requests manifest mode (i.e. this
+        parameter is ``MANIFEST_DEFAULT`` or a real path — not auto-detected).
+    input_dir:
+        Override the default input directory for drop-folder mode.
+
+    Returns
+    -------
+    SelectionResult
+        Contains the resolved file list, selection mode, any skipped files,
+        and warning messages.
+    """
+    pass
+
     
