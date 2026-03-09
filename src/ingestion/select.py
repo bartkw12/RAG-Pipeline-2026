@@ -101,3 +101,29 @@ def _filter_supported(
         else:
             skipped.append(p)
     return sorted(set(supported)), sorted(set(skipped))
+
+# ── Selection strategies ────────────────────────────────────────
+
+
+def _select_from_cli(cli_paths: list[str]) -> SelectionResult:
+    """Resolve explicit CLI paths and glob patterns."""
+    warnings: list[str] = []
+    candidates: set[Path] = set()
+
+    for raw in cli_paths:
+        p = Path(raw)
+
+        # If it looks like a glob (contains * or ?), expand it
+        if any(c in raw for c in ("*", "?")):
+            expanded = _expand_globs([raw])
+            if not expanded:
+                warnings.append(f"Glob pattern '{raw}' matched no files.")
+            candidates |= expanded
+        else:
+            resolved = _resolve_and_validate(p)
+            if resolved:
+                candidates.add(resolved)
+            else:
+                warnings.append(f"Path not found or not a file: '{raw}'")
+
+    supported, skipped = _filter_supported(candidates)
