@@ -160,7 +160,25 @@ def _select_from_manifest(manifest_path: Path) -> SelectionResult:
     All keys are optional.  ``roots`` defaults to ``INPUT_DIR``.
     ``include`` defaults to all supported extensions.
     """
-    pass
+    warnings: list[str] = []
+
+    if not manifest_path.exists():
+        warnings.append(f"Manifest not found: '{manifest_path}'")
+        return SelectionResult(
+            mode=SelectionMode.MANIFEST,
+            files=[],
+            warnings=warnings,
+        )
+
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        warnings.append(f"Failed to read manifest '{manifest_path}': {exc}")
+        return SelectionResult(
+            mode=SelectionMode.MANIFEST,
+            files=[],
+            warnings=warnings,
+        )
 
 
 
