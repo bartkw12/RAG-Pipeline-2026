@@ -80,4 +80,45 @@ class PipelineSummary:
             lines.append("═" * 56)
         return "\n".join(lines)
 
+# ── File movement ───────────────────────────────────────────────
+
+
+def _is_child_of(child: Path, parent: Path) -> bool:
+    """Return True if *child* is strictly inside *parent*."""
+    try:
+        child.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+
+
+def _move_to_processed(file_path: Path) -> None:
+    """Move a file from the input folder into ``input/processed/``,
+    preserving its subdirectory structure relative to ``INPUT_DIR``.
+
+    Only acts on files that live inside ``INPUT_DIR``.  Files provided
+    via CLI or manifest pointing elsewhere are never moved.
+    """
+    resolved = file_path.resolve()
+    input_resolved = INPUT_DIR.resolve()
+
+    if not _is_child_of(resolved, input_resolved):
+        return  # file is external — leave it alone
+
+    # Preserve relative subdirectory structure
+    relative = resolved.relative_to(input_resolved)
+    dest = PROCESSED_DIR / relative
+
+    # Handle name collision (append counter)
+    if dest.exists():
+        stem = dest.stem
+        suffix = dest.suffix
+        counter = 1
+        while dest.exists():
+            dest = dest.with_name(f"{stem}_{counter}{suffix}")
+            counter += 1
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(resolved), str(dest))
+    logger.info("Moved '%s' → '%s'", resolved.name, dest)
 
