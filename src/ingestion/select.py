@@ -28,6 +28,7 @@ from config.paths import INPUT_DIR, MANIFEST_DEFAULT, SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
+
 # ── Public types ────────────────────────────────────────────────
 
 
@@ -55,6 +56,7 @@ class SelectionResult:
     skipped: list[Path] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
+
 # ── Internal helpers ────────────────────────────────────────────
 
 
@@ -69,6 +71,7 @@ def _resolve_and_validate(path: Path) -> Path | None:
     if resolved.is_file():
         return resolved
     return None
+
 
 def _expand_globs(patterns: Iterable[str], root: Path | None = None) -> set[Path]:
     """Expand a list of glob patterns into resolved file paths.
@@ -89,6 +92,7 @@ def _expand_globs(patterns: Iterable[str], root: Path | None = None) -> set[Path
             logger.warning("Glob pattern '%s' failed: %s", pattern, exc)
     return out
 
+
 def _filter_supported(
     paths: Iterable[Path],
 ) -> tuple[list[Path], list[Path]]:
@@ -101,8 +105,6 @@ def _filter_supported(
         else:
             skipped.append(p)
     return sorted(set(supported)), sorted(set(skipped))
-
-# ── Selection strategies ────────────────────────────────────────
 
 
 # ── Selection strategies ────────────────────────────────────────
@@ -144,6 +146,7 @@ def _select_from_cli(cli_paths: list[str]) -> SelectionResult:
         skipped=skipped,
         warnings=warnings,
     )
+
 
 def _select_from_manifest(manifest_path: Path) -> SelectionResult:
     """Load a manifest JSON and resolve the files it describes.
@@ -241,6 +244,7 @@ def _select_from_manifest(manifest_path: Path) -> SelectionResult:
         warnings=warnings,
     )
 
+
 def _select_from_drop_folder(input_dir: Path) -> SelectionResult:
     """Recursively scan the input directory for supported files.
 
@@ -282,6 +286,7 @@ def _select_from_drop_folder(input_dir: Path) -> SelectionResult:
         warnings=warnings,
     )
 
+
 def _is_child_of(child: Path, parent: Path) -> bool:
     """Return True if *child* is strictly inside *parent*."""
     try:
@@ -289,6 +294,7 @@ def _is_child_of(child: Path, parent: Path) -> bool:
         return True
     except ValueError:
         return False
+
 
 # ── Main entry point ────────────────────────────────────────────
 
