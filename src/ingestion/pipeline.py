@@ -122,3 +122,21 @@ def _move_to_processed(file_path: Path) -> None:
     shutil.move(str(resolved), str(dest))
     logger.info("Moved '%s' → '%s'", resolved.name, dest)
 
+# ── Parser stub ─────────────────────────────────────────────────
+
+
+def _parse_document(path: Path) -> bool:
+    """Parse a single document.
+
+    This is a **stub** — it will be replaced with real parsing logic
+    (PDF extraction, DOCX conversion, etc.) in the next step.
+
+    Returns True on success, False on failure.
+    """
+    logger.info("Parsing '%s' … (stub — no real parsing yet)", path.name)
+    # TODO: dispatch to appropriate parser based on extension
+    #   .pdf  → ingestion.parsers.pdf
+    #   .docx → ingestion.parsers.docx
+    return True
+
+
