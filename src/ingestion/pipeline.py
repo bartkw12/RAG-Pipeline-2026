@@ -202,4 +202,105 @@ def run(
     for w in selection.warnings:
         logger.warning(w)
 
+    # ── 3. Load registry ────────────────────────────────────────
+    registry = IngestionRegistry.load()
+
+    # ── 4. Process each file ────────────────────────────────────
+    for path in selection.files:
+        # Check against registry (unless --force)
+        if not force:
+            check: CheckResult = registry.check_file(path)
+        else:
+            # Force mode: treat everything as new
+            from ingestion.registry import compute_file_hash
+
+            doc_id = compute_file_hash(path)
+            check = CheckResult(
+                status=FileStatus.NEW,
+                doc_id=doc_id,
+                message=f"Force re-ingest: '{path.name}'",
+            )
+
+        # Report status to user
+        logger.info(check.message)
+
+        # Skip unchanged duplicates
+        if check.status == FileStatus.UNCHANGED:
+            summary.skipped_unchanged += 1
+            summary.outcomes.append(
+                FileOutcome(
+                    path=path,
+                    status=check.status,
+                    doc_id=check.doc_id,
+                    message=check.message,
+                )
+            )
+            continue
+
+        # Dry-run: don't actually parse or register
+        if dry_run:
+            status_label = "Would ingest" if check.status == FileStatus.NEW else "Would re-ingest"
+            msg = f"[DRY RUN] {status_label}: '{path.name}'"
+            logger.info(msg)
+            summary.outcomes.append(
+                FileOutcome(
+                    path=path,
+                    status=check.status,
+                    doc_id=check.doc_id,
+                    message=msg,
+                )
+            )
+            if check.status == FileStatus.NEW:
+                summary.new_ingested += 1
+            else:
+                summary.re_ingested += 1
+            continue
+
+        # Parse the document
+        success = _parse_document(path)
+
+        if success:
+            # Register in the ingestion tracker
+            registry.register_file(path, doc_id=check.doc_id)
+
+            # Move drop-folder files to processed/
+            if selection.mode == SelectionMode.DROP_FOLDER:
+                _move_to_processed(path)
+
+            if check.status == FileStatus.NEW:
+                summary.new_ingested += 1
+            else:
+                summary.re_ingested += 1
+
+            summary.outcomes.append(
+                FileOutcome(
+                    path=path,
+                    status=check.status,
+                    doc_id=check.doc_id,
+                    message=check.message,
+                )
+            )
+        else:
+            summary.failed += 1
+            fail_msg = f"Failed to parse: '{path.name}'"
+            logger.error(fail_msg)
+            summary.warnings.append(fail_msg)
+            summary.outcomes.append(
+                FileOutcome(
+                    path=path,
+                    status=check.status,
+                    doc_id=check.doc_id,
+                    message=fail_msg,
+                )
+            )
+
+    # ── 5. Save registry ────────────────────────────────────────
+    if not dry_run:
+        registry.save()
+
+    # ── 6. Log summary ──────────────────────────────────────────
+    logger.info(str(summary))
+
+    return summary
+
 
