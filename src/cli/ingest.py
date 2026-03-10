@@ -83,5 +83,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Re-ingest all files, ignoring the duplicate registry.",
     )
 
+    # ── Output control ──────────────────────────────────────────
+    output = parser.add_argument_group("output")
+    output.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable verbose (DEBUG-level) logging.",
+    )
+    output.add_argument(
+        "--quiet", "-q",
+        action="store_true",
+        help="Suppress all output except errors.",
+    )
+
+    return parser
+
 
 
