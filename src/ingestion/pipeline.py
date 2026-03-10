@@ -171,5 +171,35 @@ def run(
     PipelineSummary
         Counts and per-file outcomes for the entire run.
     """
-    pass
+    # ── 1. Ensure directories exist ─────────────────────────────
+    ensure_dirs()
+
+    # ── 2. Select documents ─────────────────────────────────────
+    selection: SelectionResult = select_documents(
+        cli_paths=cli_paths,
+        manifest_path=manifest_path,
+        input_dir=input_dir,
+    )
+
+    summary = PipelineSummary(
+        selection_mode=selection.mode,
+        total_selected=len(selection.files),
+        skipped_unsupported=len(selection.skipped),
+        warnings=list(selection.warnings),
+    )
+
+    if not selection.files:
+        summary.warnings.append("No files to ingest.")
+        logger.warning("No files to ingest.")
+        return summary
+
+    # Log selection info
+    logger.info(
+        "Selected %d file(s) via %s mode.",
+        len(selection.files),
+        selection.mode.value,
+    )
+    for w in selection.warnings:
+        logger.warning(w)
+
 
