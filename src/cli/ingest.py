@@ -99,4 +99,18 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _configure_logging(*, verbose: bool = False, quiet: bool = False) -> None:
+    """Set up logging for the CLI session."""
+    if quiet:
+        level = logging.ERROR
+    elif verbose:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+
+    logging.basicConfig(
+        level=level,
+        format="%(levelname)-8s  %(message)s",
+        handlers=[logging.StreamHandler(sys.stderr)],
+    )
 
