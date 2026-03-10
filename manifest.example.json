@@ -1,0 +1,15 @@
+{
+  "roots": [
+    "./input"
+  ],
+  "include": [
+    "**/*.pdf",
+    "**/*.docx"
+  ],
+  "exclude": [
+    "**/~$*.docx",
+    "**/draft_*",
+    "**/*_old*"
+  ],
+  "files": []
+}
