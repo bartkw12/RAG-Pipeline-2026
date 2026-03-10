@@ -70,3 +70,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Override the default input directory for drop-folder mode.",
     )
 
+    # ── Behaviour flags ─────────────────────────────────────────
+    behaviour = parser.add_argument_group("behaviour")
+    behaviour.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be ingested without actually doing it.",
+    )
+    behaviour.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-ingest all files, ignoring the duplicate registry.",
+    )
+
+
+
