@@ -24,7 +24,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Iterable
 
-from config.paths import INPUT_DIR, MANIFEST_DEFAULT, SUPPORTED_EXTENSIONS
+from ..config.paths import INPUT_DIR, MANIFEST_DEFAULT, SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 

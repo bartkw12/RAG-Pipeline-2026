@@ -130,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Import pipeline here (after logging is configured) so log messages
     # emitted during module-level code are captured properly.
-    from ingestion.pipeline import run
+    from ..ingestion.pipeline import run
 
     summary = run(
         cli_paths=args.paths,

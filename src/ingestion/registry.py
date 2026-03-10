@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 
-from config.paths import REGISTRY_FILE
+from ..config.paths import REGISTRY_FILE
 
 logger = logging.getLogger(__name__)
 

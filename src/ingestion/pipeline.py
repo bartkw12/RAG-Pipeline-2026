@@ -21,13 +21,13 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from config.paths import INPUT_DIR, PROCESSED_DIR, ensure_dirs
-from ingestion.registry import (
+from ..config.paths import INPUT_DIR, PROCESSED_DIR, ensure_dirs
+from .registry import (
     CheckResult,
     FileStatus,
     IngestionRegistry,
 )
-from ingestion.select import SelectionMode, SelectionResult, select_documents
+from .select import SelectionMode, SelectionResult, select_documents
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +212,7 @@ def run(
             check: CheckResult = registry.check_file(path)
         else:
             # Force mode: treat everything as new
-            from ingestion.registry import compute_file_hash
+            from .registry import compute_file_hash
 
             doc_id = compute_file_hash(path)
             check = CheckResult(
