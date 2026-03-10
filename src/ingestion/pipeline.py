@@ -139,4 +139,37 @@ def _parse_document(path: Path) -> bool:
     #   .docx → ingestion.parsers.docx
     return True
 
+# ── Main pipeline ───────────────────────────────────────────────
+
+
+def run(
+    *,
+    cli_paths: list[str] | None = None,
+    manifest_path: Path | None = None,
+    input_dir: Path | None = None,
+    dry_run: bool = False,
+    force: bool = False,
+) -> PipelineSummary:
+    """Run the ingestion pipeline end-to-end.
+
+    Parameters
+    ----------
+    cli_paths:
+        Explicit file paths / glob patterns (highest priority).
+    manifest_path:
+        Path to a manifest JSON (second priority).
+    input_dir:
+        Override the default input directory for drop-folder mode.
+    dry_run:
+        If True, report what *would* happen without actually ingesting
+        or moving any files.
+    force:
+        If True, re-ingest all selected files regardless of the registry.
+
+    Returns
+    -------
+    PipelineSummary
+        Counts and per-file outcomes for the entire run.
+    """
+    pass
 
