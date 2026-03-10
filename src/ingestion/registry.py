@@ -234,3 +234,5 @@ class IngestionRegistry:
 
     def __contains__(self, doc_id: str) -> bool:
         return doc_id in self.entries
+
+

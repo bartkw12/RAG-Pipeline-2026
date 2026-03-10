@@ -114,3 +114,43 @@ def _configure_logging(*, verbose: bool = False, quiet: bool = False) -> None:
         handlers=[logging.StreamHandler(sys.stderr)],
     )
 
+def main(argv: list[str] | None = None) -> int:
+    """Parse arguments and run the ingestion pipeline.
+
+    Returns 0 on success, 1 if no files were found, 2 on errors.
+    """
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    # Validate: --paths and --manifest are mutually exclusive
+    if args.paths and args.manifest:
+        parser.error("--paths and --manifest cannot be used together. Pick one.")
+
+    _configure_logging(verbose=args.verbose, quiet=args.quiet)
+
+    # Import pipeline here (after logging is configured) so log messages
+    # emitted during module-level code are captured properly.
+    from ingestion.pipeline import run
+
+    summary = run(
+        cli_paths=args.paths,
+        manifest_path=args.manifest,
+        input_dir=args.input_dir,
+        dry_run=args.dry_run,
+        force=args.force,
+    )
+
+    # Print summary to stdout (not via logging, so --quiet still shows it)
+    if not args.quiet:
+        print(summary)
+
+    # Exit code
+    if summary.failed > 0:
+        return 2
+    if summary.total_selected == 0:
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
