@@ -14,7 +14,8 @@ and VLM (Azure OpenAI or local SmolVLM) support.  The pipeline is:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
 
 # ── Configuration ───────────────────────────────────────────────
@@ -71,4 +72,36 @@ class ParserConfig:
     """When VLM is enabled, generate a text description for
     content-bearing figures before stripping the image data.
     Has no effect when ``vlm_enabled`` is False."""
+
+
+# ── Parser output ───────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class ParsedDocument:
+    """Result of successfully parsing a single document.
+
+    Attributes
+    ----------
+    doc_id:
+        SHA-256 hex digest of the original file (from the registry).
+    source_path:
+        Absolute path to the original document that was parsed.
+    markdown:
+        Cleaned Markdown content ready for chunking.
+    title:
+        Document title extracted from metadata or the first heading.
+    page_count:
+        Number of pages in the source document.
+    metadata:
+        Any additional metadata extracted during conversion
+        (author, date, language, etc.).
+    """
+
+    doc_id: str
+    source_path: Path
+    markdown: str
+    title: str
+    page_count: int
+    metadata: dict[str, Any] = field(default_factory=dict)
  
