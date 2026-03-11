@@ -150,3 +150,45 @@ def _build_converter(config: ParserConfig) -> DocumentConverter:
     if config.vlm_enabled:
         return _build_vlm_converter(config)
     return _build_standard_converter(config)
+
+
+def _build_standard_converter(config: ParserConfig) -> DocumentConverter:
+    """Build a converter using the standard PDF pipeline (no VLM)."""
+
+    # ── Table structure ─────────────────────────────────────────
+    table_mode = (
+        TableFormerMode.ACCURATE
+        if config.table_mode == "accurate"
+        else TableFormerMode.FAST
+    )
+    table_options = TableStructureOptions(mode=table_mode)
+
+    # ── OCR ─────────────────────────────────────────────────────
+    ocr_options: OcrAutoOptions | EasyOcrOptions = (
+        EasyOcrOptions(force_full_page_ocr=False)
+        if config.ocr_enabled
+        else OcrAutoOptions()
+    )
+
+    # ── Assemble PDF pipeline options ───────────────────────────
+    pdf_pipeline_opts = PdfPipelineOptions(
+        do_ocr=config.ocr_enabled,
+        do_table_structure=True,
+        table_structure_options=table_options,
+        ocr_options=ocr_options,
+        do_picture_classification=True,
+        do_picture_description=False,
+        generate_picture_images=False,
+    )
+
+    return DocumentConverter(
+        allowed_formats=[InputFormat.PDF, InputFormat.DOCX],
+        format_options={
+            InputFormat.PDF: PdfFormatOption(
+                pipeline_options=pdf_pipeline_opts,
+                pipeline_cls=StandardPdfPipeline,
+            ),
+            InputFormat.DOCX: WordFormatOption(),
+        },
+    )
+
