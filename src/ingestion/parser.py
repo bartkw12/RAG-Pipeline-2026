@@ -315,3 +315,49 @@ def _filter_document_elements(
     from docling_core.types.doc.labels import DocItemLabel
 
     items_to_delete: list[NodeItem] = []
+
+    for item, _level in doc.iterate_items():
+        if not isinstance(item, DocItem):
+            continue
+
+        # ── Headers & footers ───────────────────────────────────
+        if config.strip_headers_footers and item.label in (
+            DocItemLabel.PAGE_HEADER,
+            DocItemLabel.PAGE_FOOTER,
+        ):
+            items_to_delete.append(item)
+            continue
+
+        # ── Table of contents ───────────────────────────────────
+        if config.strip_toc and item.label == DocItemLabel.DOCUMENT_INDEX:
+            items_to_delete.append(item)
+            continue
+
+        # ── Pictures (logos, icons, figures) ────────────────────
+        if isinstance(item, PictureItem):
+            classification_labels = _get_picture_classes(item)
+
+            is_logo_or_icon = bool(classification_labels & _LOGO_ICON_CLASSES)
+
+            if config.strip_logos_icons and is_logo_or_icon:
+                items_to_delete.append(item)
+                continue
+
+            # Content-bearing picture — try to preserve its description.
+            description = _get_picture_description(item)
+
+            if description:
+                # Insert a text paragraph with the description,
+                # then schedule the picture for removal.
+                doc.add_text(
+                    label=DocItemLabel.PARAGRAPH,
+                    text=f"[Figure: {description}]",
+                )
+                items_to_delete.append(item)
+                continue
+
+            # No description available — strip picture entirely
+            # (keeps file lean for chunking/embedding).
+            items_to_delete.append(item)
+            continue
+
