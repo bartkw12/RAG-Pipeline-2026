@@ -192,3 +192,87 @@ def _build_standard_converter(config: ParserConfig) -> DocumentConverter:
         },
     )
 
+
+def _build_vlm_converter(config: ParserConfig) -> DocumentConverter:
+    """Build a converter using the VLM pipeline for full-page understanding."""
+
+    if config.vlm_backend == "local":
+        # Use Docling's built-in SmolDocling model (runs on-device).
+        vlm_options = SMOLDOCLING_TRANSFORMERS
+    else:
+        # Use an Azure OpenAI endpoint as the VLM backend.
+        from docling.datamodel.pipeline_options_vlm_model import ApiVlmOptions, ResponseFormat
+        from pydantic import AnyUrl
+
+        if not config.azure_endpoint or not config.azure_api_key:
+            raise ValueError(
+                "Azure VLM backend requires 'azure_endpoint' and "
+                "'azure_api_key' in ParserConfig."
+            )
+
+        # Build the chat-completions URL from the Azure endpoint.
+        base = config.azure_endpoint.rstrip("/")
+        url = (
+            f"{base}/openai/deployments/{config.azure_model}"
+            f"/chat/completions?api-version={config.azure_api_version}"
+        )
+
+        vlm_options = ApiVlmOptions(
+            url=AnyUrl(url),
+            headers={"api-key": config.azure_api_key},
+            prompt="Convert this page to docling.",
+            response_format=ResponseFormat.DOCTAGS,
+            timeout=120.0,
+        )
+
+    # ── Picture description (VLM-describe-then-strip) ──────────
+    pic_desc_options: PictureDescriptionApiOptions | PictureDescriptionVlmOptions
+    do_picture_desc = config.describe_images
+
+    if config.describe_images:
+        if config.vlm_backend == "local":
+            pic_desc_options = PictureDescriptionVlmOptions(
+                repo_id="HuggingFaceTB/SmolVLM-256M-Instruct",
+                prompt=_IMAGE_DESCRIPTION_PROMPT,
+            )
+        else:
+            base = config.azure_endpoint.rstrip("/")  # type: ignore[union-attr]
+            pic_url = (
+                f"{base}/openai/deployments/{config.azure_model}"
+                f"/chat/completions?api-version={config.azure_api_version}"
+            )
+            from pydantic import AnyUrl as _AnyUrl
+
+            pic_desc_options = PictureDescriptionApiOptions(
+                url=_AnyUrl(pic_url),
+                headers={"api-key": config.azure_api_key},  # type: ignore[arg-type]
+                prompt=_IMAGE_DESCRIPTION_PROMPT,
+                timeout=60.0,
+            )
+    else:
+        # Provide a harmless default (won't be used since do_picture_description=False).
+        pic_desc_options = PictureDescriptionVlmOptions(
+            repo_id="HuggingFaceTB/SmolVLM-256M-Instruct",
+            prompt=_IMAGE_DESCRIPTION_PROMPT,
+        )
+
+    # ── Assemble VLM pipeline options ───────────────────────────
+    vlm_pipeline_opts = VlmPipelineOptions(
+        vlm_options=vlm_options,
+        do_picture_classification=True,
+        do_picture_description=do_picture_desc,
+        generate_page_images=True,
+        generate_picture_images=config.describe_images,
+        picture_description_options=pic_desc_options,
+    )
+
+    return DocumentConverter(
+        allowed_formats=[InputFormat.PDF, InputFormat.DOCX],
+        format_options={
+            InputFormat.PDF: PdfFormatOption(
+                pipeline_options=vlm_pipeline_opts,
+                pipeline_cls=VlmPipeline,
+            ),
+            InputFormat.DOCX: WordFormatOption(),
+        },
+    )
