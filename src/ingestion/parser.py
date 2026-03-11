@@ -15,3 +15,60 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Literal
+
+
+# ── Configuration ───────────────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class ParserConfig:
+    """All knobs for the document parsing pipeline.
+
+    Sensible defaults are provided for every field.  Override via CLI
+    flags (``--ocr``, ``--vlm``, etc.) or by constructing directly.
+    """
+
+    # ── OCR ─────────────────────────────────────────────────────
+    ocr_enabled: bool = False
+    """Activate EasyOCR for scanned / image-heavy pages."""
+
+    # ── VLM (vision-language model) ─────────────────────────────
+    vlm_enabled: bool = False
+    """Activate a vision-language model for layout understanding
+    and image description."""
+
+    vlm_backend: Literal["azure", "local"] = "azure"
+    """Which VLM backend to use.
+    - ``"azure"``  — Azure OpenAI endpoint (requires credentials).
+    - ``"local"``  — Docling's built-in SmolVLM (runs on-device).
+    """
+
+    # ── Azure OpenAI credentials (only used when vlm_backend="azure") ──
+    azure_endpoint: str | None = None
+    azure_api_key: str | None = None
+    azure_model: str = "gpt-4.1"
+    azure_api_version: str = "2023-05-15"
+
+    # ── Table extraction ────────────────────────────────────────
+    table_mode: Literal["accurate", "fast"] = "accurate"
+    """Docling ``TableFormerMode``: ``"accurate"`` is slower but better;
+    ``"fast"`` is lighter on resources."""
+
+    # ── Post-processing / cleanup toggles ───────────────────────
+    strip_headers_footers: bool = True
+    """Remove elements classified as page headers or footers."""
+
+    strip_toc: bool = True
+    """Remove table-of-contents sections."""
+
+    strip_logos_icons: bool = True
+    """Remove images classified as logos or icons."""
+
+    strip_page_numbers: bool = True
+    """Remove standalone page-number elements."""
+
+    describe_images: bool = True
+    """When VLM is enabled, generate a text description for
+    content-bearing figures before stripping the image data.
+    Has no effect when ``vlm_enabled`` is False."""
+ 
