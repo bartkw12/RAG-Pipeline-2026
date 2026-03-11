@@ -33,6 +33,7 @@ from docling.datamodel.vlm_model_specs import SMOLDOCLING_TRANSFORMERS
 from docling.document_converter import DocumentConverter, PdfFormatOption, WordFormatOption
 from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
 from docling.pipeline.vlm_pipeline import VlmPipeline
+from docling_core.types.doc.document import DoclingDocument, NodeItem, PictureItem
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +218,7 @@ def _build_vlm_converter(config: ParserConfig) -> DocumentConverter:
             f"/chat/completions?api-version={config.azure_api_version}"
         )
 
-        vlm_options = ApiVlmOptions(
+        vlm_options = ApiVlmOptions(  # type: ignore[call-arg]
             url=AnyUrl(url),
             headers={"api-key": config.azure_api_key},
             prompt="Convert this page to docling.",
@@ -276,3 +277,41 @@ def _build_vlm_converter(config: ParserConfig) -> DocumentConverter:
             InputFormat.DOCX: WordFormatOption(),
         },
     )
+
+
+# ── Pre-export element filtering ────────────────────────────────
+
+# Labels that correspond to logos, icons, and other non-content images.
+_LOGO_ICON_CLASSES: frozenset[str] = frozenset({
+    "LOGO", "ICON", "STAMP", "QR_CODE", "BAR_CODE", "SIGNATURE",
+})
+
+
+def _filter_document_elements(
+    doc: DoclingDocument,
+    config: ParserConfig,
+) -> DoclingDocument:
+    """Remove noise elements from a Docling document **in-place**.
+
+    Walks the document tree and collects elements to delete based on
+    their ``DocItemLabel`` and (for pictures) their classification
+    annotations.  All matching elements are removed in a single
+    ``delete_items`` call at the end to avoid iterator invalidation.
+
+    For pictures that are NOT classified as logos/icons (i.e. real
+    diagrams or charts), if the VLM produced a ``DescriptionAnnotation``
+    we keep the description text by inserting a ``[Figure: …]`` text
+    element before deleting the picture.
+
+    Returns the same ``doc`` reference (mutated).
+    """
+    from docling_core.types.doc.document import (
+        DescriptionAnnotation,
+        DocItem,
+        PictureClassificationData,
+        PictureItem,
+        TextItem,
+    )
+    from docling_core.types.doc.labels import DocItemLabel
+
+    items_to_delete: list[NodeItem] = []
