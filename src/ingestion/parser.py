@@ -13,9 +13,28 @@ and VLM (Azure OpenAI or local SmolVLM) support.  The pipeline is:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
+
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import (
+    EasyOcrOptions,
+    OcrAutoOptions,
+    PdfPipelineOptions,
+    PictureDescriptionApiOptions,
+    PictureDescriptionVlmOptions,
+    TableFormerMode,
+    TableStructureOptions,
+    VlmPipelineOptions,
+)
+from docling.datamodel.vlm_model_specs import SMOLDOCLING_TRANSFORMERS
+from docling.document_converter import DocumentConverter, PdfFormatOption, WordFormatOption
+from docling.pipeline.standard_pdf_pipeline import StandardPdfPipeline
+from docling.pipeline.vlm_pipeline import VlmPipeline
+
+logger = logging.getLogger(__name__)
 
 
 # ── Configuration ───────────────────────────────────────────────
@@ -104,4 +123,30 @@ class ParsedDocument:
     title: str
     page_count: int
     metadata: dict[str, Any] = field(default_factory=dict)
- 
+
+
+# ── Converter builder ───────────────────────────────────────────
+
+# Prompt used when VLM describes content-bearing figures.
+_IMAGE_DESCRIPTION_PROMPT = (
+    "Describe the content of this technical diagram or figure in 2-3 sentences. "
+    "Focus on what information it conveys, not its visual style."
+)
+
+
+def _build_converter(config: ParserConfig) -> DocumentConverter:
+    """Construct a Docling ``DocumentConverter`` configured per *config*.
+
+    Two mutually exclusive pipeline modes are supported:
+
+    * **Standard PDF pipeline** (default) — layout analysis + OCR + table
+      extraction.  Used when ``vlm_enabled`` is False.
+    * **VLM pipeline** — uses a vision-language model for full-page
+      conversion.  Used when ``vlm_enabled`` is True.
+
+    DOCX always uses Docling's simple pipeline (no special options needed).
+    """
+
+    if config.vlm_enabled:
+        return _build_vlm_converter(config)
+    return _build_standard_converter(config)
