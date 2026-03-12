@@ -361,3 +361,12 @@ def _filter_document_elements(
             items_to_delete.append(item)
             continue
 
+    # ── Bulk delete ─────────────────────────────────────────────
+    if items_to_delete:
+        doc.delete_items(node_items=items_to_delete)
+        logger.info(
+            "Filtered %d noise element(s) from document.",
+            len(items_to_delete),
+        )
+
+    return doc
