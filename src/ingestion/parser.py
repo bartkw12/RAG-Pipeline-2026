@@ -433,3 +433,119 @@ def _clean_markdown(md: str) -> str:
     md = md.strip()
 
     return md
+
+
+# ── Main entry point ────────────────────────────────────────────
+
+
+def parse_document(
+    path: Path,
+    doc_id: str,
+    config: ParserConfig | None = None,
+    converter: DocumentConverter | None = None,
+) -> ParsedDocument | None:
+    """Parse a single document to clean Markdown.
+
+    Parameters
+    ----------
+    path:
+        Path to the source PDF or DOCX file.
+    doc_id:
+        SHA-256 hex digest (from the ingestion registry).
+    config:
+        Parser configuration.  Uses ``ParserConfig()`` defaults if omitted.
+    converter:
+        Pre-built ``DocumentConverter``.  If omitted, one is built from
+        *config*.  Pass a shared converter for batch runs to avoid
+        reloading models for every file.
+
+    Returns
+    -------
+    ParsedDocument
+        On success — contains the cleaned Markdown and metadata.
+    None
+        On failure — the error is logged, caller decides how to handle.
+    """
+    from docling.datamodel.base_models import ConversionStatus
+
+    from ..config.paths import MARKDOWN_DIR
+
+    cfg = config or ParserConfig()
+
+    # ── 1. Build or reuse converter ─────────────────────────────
+    conv = converter or _build_converter(cfg)
+
+    # ── 2. Convert document via Docling ─────────────────────────
+    try:
+        result = conv.convert(source=path, raises_on_error=True)
+    except Exception:
+        logger.exception("Docling conversion failed for '%s'.", path.name)
+        return None
+
+    if result.status not in (ConversionStatus.SUCCESS, ConversionStatus.PARTIAL_SUCCESS):
+        logger.error(
+            "Conversion returned status '%s' for '%s'.",
+            result.status.name,
+            path.name,
+        )
+        return None
+
+    doc = result.document
+
+    # ── 3. Extract metadata before filtering ────────────────────
+    page_count = result.input.page_count
+
+    # Title: prefer the document's own name, fall back to first heading
+    title = doc.name or ""
+    if not title:
+        from docling_core.types.doc.labels import DocItemLabel
+
+        for item, _ in doc.iterate_items():
+            if hasattr(item, "label") and item.label in (
+                DocItemLabel.TITLE,
+                DocItemLabel.SECTION_HEADER,
+            ):
+                title = getattr(item, "text", "") or ""
+                if title:
+                    break
+
+    if not title:
+        title = path.stem
+
+    # ── 4. Filter noise elements ────────────────────────────────
+    _filter_document_elements(doc, cfg)
+
+    # ── 5. Export to Markdown ───────────────────────────────────
+    raw_md = doc.export_to_markdown()
+
+    # ── 6. Clean the Markdown ───────────────────────────────────
+    cleaned_md = _clean_markdown(raw_md)
+
+    if not cleaned_md:
+        logger.warning("Parsing produced empty Markdown for '%s'.", path.name)
+        return None
+
+    # ── 7. Write to cache ───────────────────────────────────────
+    MARKDOWN_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = MARKDOWN_DIR / f"{doc_id}.md"
+    out_path.write_text(cleaned_md, encoding="utf-8")
+    logger.info(
+        "Saved parsed Markdown for '%s' → '%s' (%d chars).",
+        path.name,
+        out_path.name,
+        len(cleaned_md),
+    )
+
+    # ── 8. Return result ────────────────────────────────────────
+    return ParsedDocument(
+        doc_id=doc_id,
+        source_path=path,
+        markdown=cleaned_md,
+        title=title,
+        page_count=page_count,
+        metadata={
+            "source_format": result.input.format.name if result.input.format else "UNKNOWN",
+            "conversion_status": result.status.name,
+            "file_size_bytes": result.input.filesize,
+        },
+    )
