@@ -103,6 +103,101 @@ The ingestion log reports exactly what happened:
 
 Metadata is stored in `cache/meta/ingestion_registry.json` and persists across runs.
 
+### Document parsing
+
+Documents are converted to clean Markdown using the [Docling](https://github.com/DS4SD/docling) library. The parser supports PDF and DOCX files out of the box.
+
+#### Default mode (standard pipeline)
+
+By default, parsing uses Docling's standard PDF pipeline — no OCR, no VLM. This is fast and works well for text-based PDFs and all DOCX files:
+
+```bash
+python -m src.cli.ingest --paths report.pdf
+```
+
+#### OCR (EasyOCR)
+
+For scanned documents or image-heavy pages, enable OCR:
+
+```bash
+python -m src.cli.ingest --paths scanned.pdf --ocr
+```
+
+This activates EasyOCR via Docling's pipeline. Text from scanned pages is extracted and included in the Markdown output.
+
+#### VLM (Vision-Language Model) pipeline
+
+For richer extraction — including table understanding and diagram descriptions — enable the VLM pipeline:
+
+```bash
+# Azure OpenAI backend (default)
+python -m src.cli.ingest --paths complex.pdf --vlm
+
+# Local SmolDocling backend
+python -m src.cli.ingest --paths complex.pdf --vlm --vlm-backend local
+```
+
+When VLM is enabled:
+- **Azure backend** (`--vlm-backend azure`, default): Uses your Azure OpenAI credentials from `config_V2025_05_31.json`. Requires an endpoint with a vision-capable model (e.g. GPT-4.1).
+- **Local backend** (`--vlm-backend local`): Uses the SmolDocling Transformers model locally. No API key needed, but requires GPU for reasonable performance.
+- **Image descriptions**: Content-bearing figures and diagrams are described in text by the VLM before images are stripped. The prompt focuses on *what information the figure conveys*, not its visual style. Descriptions appear as `[Figure: ...]` blocks in the Markdown.
+
+#### Table extraction mode
+
+Choose between accurate (default) and fast table extraction:
+
+```bash
+# Accurate mode (TableFormer — slower, better quality)
+python -m src.cli.ingest --paths tables.pdf --table-mode accurate
+
+# Fast mode (quicker, less precise)
+python -m src.cli.ingest --paths tables.pdf --table-mode fast
+```
+
+#### Post-processing and filtering
+
+By default, the parser automatically strips:
+- Page headers and footers
+- Table-of-contents sections
+- Logos and icons
+- Residual page-number lines (e.g. "Page 3 of 12")
+- Excess blank lines and trailing whitespace
+
+You can selectively disable this filtering:
+
+```bash
+# Keep page headers and footers
+python -m src.cli.ingest --paths doc.pdf --no-strip-headers
+
+# Keep table-of-contents
+python -m src.cli.ingest --paths doc.pdf --no-strip-toc
+
+# Keep image placeholders (skip image stripping)
+python -m src.cli.ingest --paths doc.pdf --keep-images
+```
+
+#### Combining parsing flags
+
+All parsing flags can be combined with each other and with selection/behaviour flags:
+
+```bash
+# Full pipeline: OCR + VLM + Azure, force re-ingest, verbose
+python -m src.cli.ingest --paths "D:\Specs\*.pdf" --ocr --vlm --force --verbose
+
+# Drop-folder mode with fast tables and no header stripping
+python -m src.cli.ingest --table-mode fast --no-strip-headers
+
+# Dry run to preview what VLM parsing would process
+python -m src.cli.ingest --vlm --dry-run
+```
+
+#### Output
+
+Parsed Markdown files are written to `cache/markdown/{doc_id}.md`, where `doc_id` is the SHA-256 hash of the source file. Each `ParsedDocument` also captures:
+- Document title (from metadata or first heading)
+- Page count
+- Source format, conversion status, and file size
+
 ### CLI reference
 
 ```bash
@@ -120,6 +215,21 @@ python -m src.cli.ingest --dry-run
 
 # Force re-ingest all, bypass duplicate detection
 python -m src.cli.ingest --force
+
+# Enable OCR for scanned documents
+python -m src.cli.ingest --ocr
+
+# Enable VLM pipeline (Azure backend by default)
+python -m src.cli.ingest --vlm
+
+# Enable VLM with local SmolDocling model
+python -m src.cli.ingest --vlm --vlm-backend local
+
+# Choose table extraction mode
+python -m src.cli.ingest --table-mode fast
+
+# Keep headers/footers, TOC, or images
+python -m src.cli.ingest --no-strip-headers --no-strip-toc --keep-images
 
 # Verbose logging (DEBUG level)
 python -m src.cli.ingest --verbose
