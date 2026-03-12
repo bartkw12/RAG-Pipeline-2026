@@ -174,6 +174,20 @@ def main(argv: list[str] | None = None) -> int:
     from ..ingestion.pipeline import run
 
     # ── Build ParserConfig from CLI args ────────────────────────
+    azure_endpoint: str | None = None
+    azure_api_key: str | None = None
+    azure_model: str = "gpt-4.1"
+    azure_api_version: str = "2023-05-15"
+
+    if args.vlm and args.vlm_backend == "azure":
+        from ..config.env_config import load_azure_vlm_config
+
+        creds = load_azure_vlm_config()
+        azure_endpoint = creds["endpoint"]
+        azure_api_key = creds["api_key"]
+        azure_model = creds["model"]
+        azure_api_version = creds["api_version"]
+
     parser_config = ParserConfig(
         ocr_enabled=args.ocr,
         vlm_enabled=args.vlm,
@@ -182,6 +196,10 @@ def main(argv: list[str] | None = None) -> int:
         strip_headers_footers=not args.no_strip_headers,
         strip_toc=not args.no_strip_toc,
         describe_images=not args.keep_images,
+        azure_endpoint=azure_endpoint,
+        azure_api_key=azure_api_key,
+        azure_model=azure_model,
+        azure_api_version=azure_api_version,
     )
 
     summary = run(

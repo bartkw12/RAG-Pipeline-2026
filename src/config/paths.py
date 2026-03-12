@@ -23,6 +23,9 @@ REGISTRY_FILE = META_DIR / "ingestion_registry.json"
 # ── Default manifest location ──────────────────────────────────
 MANIFEST_DEFAULT = PROJECT_ROOT / "manifest.json"
 
+# ── External config file (Azure credentials, etc.) ─────────────
+CONFIG_FILE = PROJECT_ROOT / "config_V2025_05_31.json"
+
 # ── Supported file extensions for ingestion ─────────────────────
 SUPPORTED_EXTENSIONS: frozenset[str] = frozenset({".pdf", ".docx"})
 
