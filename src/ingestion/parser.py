@@ -14,6 +14,7 @@ and VLM (Azure OpenAI or local SmolVLM) support.  The pipeline is:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
@@ -392,3 +393,43 @@ def _get_picture_description(item: PictureItem) -> str | None:
         if isinstance(ann, DescriptionAnnotation) and ann.text.strip():
             return ann.text.strip()
     return None
+
+
+# ── Post-export Markdown cleanup ─────────────────────────────────
+
+# Regex patterns compiled once at module level.
+_RE_EXCESSIVE_BLANKS = re.compile(r"\n{3,}")
+_RE_TRAILING_WHITESPACE = re.compile(r"[ \t]+$", re.MULTILINE)
+_RE_PAGE_X_OF_Y = re.compile(
+    r"^\s*page\s+\d+\s+of\s+\d+\s*$", re.IGNORECASE | re.MULTILINE
+)
+_RE_REPEATED_SEPARATORS = re.compile(r"(^[ \t]*[-=_]{3,}[ \t]*$\n?){2,}", re.MULTILINE)
+
+
+def _clean_markdown(md: str) -> str:
+    """Post-process a raw Markdown string for chunking quality.
+
+    Applies the following transforms in order:
+
+    1. Remove residual “Page X of Y” lines.
+    2. Collapse repeated separator lines (``---``, ``===``, ``___``).
+    3. Strip trailing whitespace from every line.
+    4. Collapse 3+ consecutive blank lines down to 2.
+    5. Strip leading / trailing whitespace from the whole document.
+    """
+    # 1. Remove "Page X of Y" artifacts
+    md = _RE_PAGE_X_OF_Y.sub("", md)
+
+    # 2. Collapse repeated separator lines into a single one
+    md = _RE_REPEATED_SEPARATORS.sub("---\n", md)
+
+    # 3. Strip trailing whitespace per line
+    md = _RE_TRAILING_WHITESPACE.sub("", md)
+
+    # 4. Collapse excessive blank lines
+    md = _RE_EXCESSIVE_BLANKS.sub("\n\n", md)
+
+    # 5. Strip leading/trailing whitespace from the whole document
+    md = md.strip()
+
+    return md
