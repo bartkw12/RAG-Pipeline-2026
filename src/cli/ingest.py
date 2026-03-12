@@ -170,7 +170,19 @@ def main(argv: list[str] | None = None) -> int:
 
     # Import pipeline here (after logging is configured) so log messages
     # emitted during module-level code are captured properly.
+    from ..ingestion.parser import ParserConfig
     from ..ingestion.pipeline import run
+
+    # ── Build ParserConfig from CLI args ────────────────────────
+    parser_config = ParserConfig(
+        ocr_enabled=args.ocr,
+        vlm_enabled=args.vlm,
+        vlm_backend=args.vlm_backend,
+        table_mode=args.table_mode,
+        strip_headers_footers=not args.no_strip_headers,
+        strip_toc=not args.no_strip_toc,
+        describe_images=not args.keep_images,
+    )
 
     summary = run(
         cli_paths=args.paths,
@@ -178,6 +190,7 @@ def main(argv: list[str] | None = None) -> int:
         input_dir=args.input_dir,
         dry_run=args.dry_run,
         force=args.force,
+        parser_config=parser_config,
     )
 
     # Print summary to stdout (not via logging, so --quiet still shows it)
