@@ -4,7 +4,7 @@ This is the central entry point that wires together:
 
 * **select.py**   → decides *which* files to ingest (CLI / manifest / drop folder)
 * **registry.py** → checks duplicates and tracks what's been ingested
-* **parser.py**   → converts raw documents to normalised output (stub for now)
+* **parser.py**   → converts raw documents to clean Markdown via Docling
 
 Typical invocation (from CLI or programmatically)::
 
@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..config.paths import INPUT_DIR, PROCESSED_DIR, ensure_dirs
+from .parser import ParserConfig, _build_converter, parse_document
 from .registry import (
     CheckResult,
     FileStatus,
@@ -122,23 +123,6 @@ def _move_to_processed(file_path: Path) -> None:
     shutil.move(str(resolved), str(dest))
     logger.info("Moved '%s' → '%s'", resolved.name, dest)
 
-# ── Parser stub ─────────────────────────────────────────────────
-
-
-def _parse_document(path: Path) -> bool:
-    """Parse a single document.
-
-    This is a **stub** — it will be replaced with real parsing logic
-    (PDF extraction, DOCX conversion, etc.) in the next step.
-
-    Returns True on success, False on failure.
-    """
-    logger.info("Parsing '%s' … (stub — no real parsing yet)", path.name)
-    # TODO: dispatch to appropriate parser based on extension
-    #   .pdf  → ingestion.parsers.pdf
-    #   .docx → ingestion.parsers.docx
-    return True
-
 # ── Main pipeline ───────────────────────────────────────────────
 
 
@@ -149,6 +133,7 @@ def run(
     input_dir: Path | None = None,
     dry_run: bool = False,
     force: bool = False,
+    parser_config: ParserConfig | None = None,
 ) -> PipelineSummary:
     """Run the ingestion pipeline end-to-end.
 
@@ -165,6 +150,9 @@ def run(
         or moving any files.
     force:
         If True, re-ingest all selected files regardless of the registry.
+    parser_config:
+        Optional ``ParserConfig`` for the document parser.  When omitted,
+        ``ParserConfig()`` defaults are used.
 
     Returns
     -------
@@ -192,6 +180,10 @@ def run(
         summary.warnings.append("No files to ingest.")
         logger.warning("No files to ingest.")
         return summary
+
+    # Build a shared converter once (avoids reloading models per file)
+    cfg = parser_config or ParserConfig()
+    converter = _build_converter(cfg)
 
     # Log selection info
     logger.info(
@@ -257,9 +249,14 @@ def run(
             continue
 
         # Parse the document
-        success = _parse_document(path)
+        parsed = parse_document(
+            path,
+            doc_id=check.doc_id,
+            config=cfg,
+            converter=converter,
+        )
 
-        if success:
+        if parsed is not None:
             # Register in the ingestion tracker
             registry.register_file(path, doc_id=check.doc_id)
 
