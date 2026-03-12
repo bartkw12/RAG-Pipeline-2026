@@ -501,10 +501,8 @@ def parse_document(
         from docling_core.types.doc.labels import DocItemLabel
 
         for item, _ in doc.iterate_items():
-            if hasattr(item, "label") and item.label in (
-                DocItemLabel.TITLE,
-                DocItemLabel.SECTION_HEADER,
-            ):
+            label = getattr(item, "label", None)
+            if label in (DocItemLabel.TITLE, DocItemLabel.SECTION_HEADER):
                 title = getattr(item, "text", "") or ""
                 if title:
                     break
