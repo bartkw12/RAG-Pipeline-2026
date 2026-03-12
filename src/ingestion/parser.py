@@ -382,3 +382,13 @@ def _get_picture_classes(item: PictureItem) -> set[str]:
             for pred in ann.predicted_classes:
                 classes.add(pred.class_name.upper())
     return classes
+
+
+def _get_picture_description(item: PictureItem) -> str | None:
+    """Return the first description annotation text, if any."""
+    from docling_core.types.doc.document import DescriptionAnnotation
+
+    for ann in item.annotations:
+        if isinstance(ann, DescriptionAnnotation) and ann.text.strip():
+            return ann.text.strip()
+    return None
