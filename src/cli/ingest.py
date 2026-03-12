@@ -96,6 +96,46 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Suppress all output except errors.",
     )
 
+    # ── Parsing options ─────────────────────────────────────────
+    parsing = parser.add_argument_group("parsing")
+    parsing.add_argument(
+        "--ocr",
+        action="store_true",
+        help="Enable OCR (EasyOCR) for scanned or image-heavy documents.",
+    )
+    parsing.add_argument(
+        "--vlm",
+        action="store_true",
+        help="Enable the Vision-Language Model pipeline for richer extraction.",
+    )
+    parsing.add_argument(
+        "--vlm-backend",
+        choices=["azure", "local"],
+        default="azure",
+        help='VLM backend to use (default: "azure").',
+    )
+    parsing.add_argument(
+        "--table-mode",
+        choices=["accurate", "fast"],
+        default="accurate",
+        help='Table extraction mode (default: "accurate").',
+    )
+    parsing.add_argument(
+        "--no-strip-headers",
+        action="store_true",
+        help="Keep page headers and footers in the output.",
+    )
+    parsing.add_argument(
+        "--no-strip-toc",
+        action="store_true",
+        help="Keep the table-of-contents in the output.",
+    )
+    parsing.add_argument(
+        "--keep-images",
+        action="store_true",
+        help="Keep image placeholders instead of stripping them.",
+    )
+
     return parser
 
 
