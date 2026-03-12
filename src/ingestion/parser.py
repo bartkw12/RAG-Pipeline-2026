@@ -370,3 +370,15 @@ def _filter_document_elements(
         )
 
     return doc
+
+
+def _get_picture_classes(item: PictureItem) -> set[str]:
+    """Extract classification labels from a ``PictureItem``."""
+    from docling_core.types.doc.document import PictureClassificationData
+
+    classes: set[str] = set()
+    for ann in item.annotations:
+        if isinstance(ann, PictureClassificationData):
+            for pred in ann.predicted_classes:
+                classes.add(pred.class_name.upper())
+    return classes
