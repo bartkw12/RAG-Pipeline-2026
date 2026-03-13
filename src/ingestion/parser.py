@@ -89,6 +89,11 @@ class ParserConfig:
     strip_page_numbers: bool = True
     """Remove standalone page-number elements."""
 
+    strip_boilerplate_blocks: bool = True
+    """Remove repeated boilerplate content that Docling fails to
+    classify as page headers — e.g. security classification banners
+    (``THALES GROUP INTERNAL``) and repeated document-ID tables."""
+
     describe_images: bool = True
     """When VLM is enabled, generate a text description for
     content-bearing figures before stripping the image data.
@@ -287,6 +292,47 @@ _LOGO_ICON_CLASSES: frozenset[str] = frozenset({
     "LOGO", "ICON", "STAMP", "QR_CODE", "BAR_CODE", "SIGNATURE",
 })
 
+# ── Boilerplate detection ───────────────────────────────────────
+
+# Regex matching security-classification banner headings that appear
+# on every page of Thales-template documents (e.g. "THALES GROUP INTERNAL",
+# "THALES GROUP CONFIDENTIAL", "THALES GROUP RESTRICTED", etc.).
+_RE_CLASSIFICATION_BANNER = re.compile(
+    r"^\s*THALES\s+GROUP\s+\w+\s*$", re.IGNORECASE
+)
+
+# Regex matching Entity-ID patterns found in repeated document-ID tables
+# (e.g. "15900~9950").
+_RE_ENTITY_ID = re.compile(r"\d{4,6}~\d{3,5}")
+
+# Regex matching Thales document identifiers across variants
+# (e.g. "7HA-02944-AAAA-980EN", "7HA-02944-ABAA-030EN").
+_RE_DOC_ID = re.compile(r"\d+[A-Z]{0,2}-\d{4,6}-[A-Z]{4}-\d{3}[A-Z]{2}")
+
+
+def _is_classification_banner(text: str) -> bool:
+    """Return True if *text* looks like a security-classification heading."""
+    return bool(_RE_CLASSIFICATION_BANNER.match(text.strip()))
+
+
+def _is_boilerplate_table(table_item: object) -> bool:
+    """Return True if a ``TableItem`` is a repeated document-ID table.
+
+    Detection heuristic: the table contains a cell matching the
+    Entity-ID pattern (``nnnnn~nnnn``) *or* the Thales document-ID
+    pattern (``7HA-nnnnn-XXXX-nnnXX``).  These tables appear on every
+    page as part of the page header block.
+    """
+    data = getattr(table_item, "data", None)
+    if data is None:
+        return False
+
+    for cell in getattr(data, "table_cells", []):
+        cell_text = getattr(cell, "text", "")
+        if _RE_ENTITY_ID.search(cell_text) or _RE_DOC_ID.search(cell_text):
+            return True
+    return False
+
 
 def _filter_document_elements(
     doc: DoclingDocument,
@@ -311,6 +357,8 @@ def _filter_document_elements(
         DocItem,
         PictureClassificationData,
         PictureItem,
+        SectionHeaderItem,
+        TableItem,
         TextItem,
     )
     from docling_core.types.doc.labels import DocItemLabel
@@ -333,6 +381,18 @@ def _filter_document_elements(
         if config.strip_toc and item.label == DocItemLabel.DOCUMENT_INDEX:
             items_to_delete.append(item)
             continue
+
+        # ── Boilerplate: classification banners ─────────────────
+        if config.strip_boilerplate_blocks and isinstance(item, SectionHeaderItem):
+            if _is_classification_banner(item.text):
+                items_to_delete.append(item)
+                continue
+
+        # ── Boilerplate: repeated document-ID tables ────────────
+        if config.strip_boilerplate_blocks and isinstance(item, TableItem):
+            if _is_boilerplate_table(item):
+                items_to_delete.append(item)
+                continue
 
         # ── Pictures (logos, icons, figures) ────────────────────
         if isinstance(item, PictureItem):
