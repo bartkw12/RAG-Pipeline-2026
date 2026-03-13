@@ -559,6 +559,18 @@ _RE_FALSE_POSITIVE_HEADING = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# Safety-net regex: catches any residual boilerplate blocks that survived
+# the pre-export filter.  Matches a classification banner heading followed
+# by a document-ID table (with pipe-delimited rows and separator line).
+_RE_RESIDUAL_BOILERPLATE = re.compile(
+    r"^#{1,6}\s+THALES\s+GROUP\s+\w+\s*\n"   # "## THALES GROUP INTERNAL"
+    r"(?:\s*\n)*"                               # optional blank lines
+    r"\|.+\|\s*\n"                              # table header row
+    r"\|[-| ]+\|\s*\n"                          # table separator row
+    r"(?:\|.+\|\s*\n)*",                        # remaining table rows
+    re.IGNORECASE | re.MULTILINE,
+)
+
 
 def _clean_markdown(md: str) -> str:
     """Post-process a raw Markdown string for chunking quality.
@@ -566,30 +578,34 @@ def _clean_markdown(md: str) -> str:
     Applies the following transforms in order:
 
     1. Remove residual “Page X of Y” lines.
-    2. Demote false-positive headings ("## Passed" → "Passed").
-    3. Collapse repeated separator lines (``---``, ``===``, ``___``).
-    4. Strip trailing whitespace from every line.
-    5. Collapse 3+ consecutive blank lines down to 2.
-    6. Strip leading / trailing whitespace from the whole document.
+    2. Remove residual boilerplate blocks (classification banner + doc-ID table).
+    3. Demote false-positive headings ("## Passed" → "Passed").
+    4. Collapse repeated separator lines (``---``, ``===``, ``___``).
+    5. Strip trailing whitespace from every line.
+    6. Collapse 3+ consecutive blank lines down to 2.
+    7. Strip leading / trailing whitespace from the whole document.
     """
     # 1. Remove "Page X of Y" artifacts
     md = _RE_PAGE_X_OF_Y.sub("", md)
 
-    # 2. Demote false-positive headings to plain text
+    # 2. Remove residual boilerplate blocks
+    md = _RE_RESIDUAL_BOILERPLATE.sub("", md)
+
+    # 3. Demote false-positive headings to plain text
     md = _RE_FALSE_POSITIVE_HEADING.sub(
         lambda m: m.group(0).lstrip("# ").strip(), md
     )
 
-    # 3. Collapse repeated separator lines into a single one
+    # 4. Collapse repeated separator lines into a single one
     md = _RE_REPEATED_SEPARATORS.sub("---\n", md)
 
-    # 4. Strip trailing whitespace per line
+    # 5. Strip trailing whitespace per line
     md = _RE_TRAILING_WHITESPACE.sub("", md)
 
-    # 5. Collapse excessive blank lines
+    # 6. Collapse excessive blank lines
     md = _RE_EXCESSIVE_BLANKS.sub("\n\n", md)
 
-    # 6. Strip leading/trailing whitespace from the whole document
+    # 7. Strip leading/trailing whitespace from the whole document
     md = md.strip()
 
     return md
