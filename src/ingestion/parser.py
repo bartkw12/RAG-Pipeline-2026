@@ -13,6 +13,7 @@ and VLM (Azure OpenAI or local SmolVLM) support.  The pipeline is:
 
 from __future__ import annotations
 
+import html as html_module
 import logging
 import re
 from dataclasses import dataclass, field
@@ -594,9 +595,11 @@ def _clean_markdown(md: str) -> str:
     3. Remove residual boilerplate blocks (classification banner + doc-ID table).
     4. Demote false-positive headings ("## Passed" → "Passed").
     5. Collapse repeated separator lines (``---``, ``===``, ``___``).
-    6. Strip trailing whitespace from every line.
-    7. Collapse 3+ consecutive blank lines down to 2.
-    8. Strip leading / trailing whitespace from the whole document.
+    6. Decode residual HTML entities (``&amp;`` → ``&``).
+    7. Strip HTML comment artifacts (``<!-- ... -->``).
+    8. Strip trailing whitespace from every line.
+    9. Collapse 3+ consecutive blank lines down to 2.
+    10. Strip leading / trailing whitespace from the whole document.
     """
     # 1. Strip front-matter address block
     md = _RE_FRONT_MATTER.sub("", md)
@@ -615,13 +618,19 @@ def _clean_markdown(md: str) -> str:
     # 5. Collapse repeated separator lines into a single one
     md = _RE_REPEATED_SEPARATORS.sub("---\n", md)
 
-    # 6. Strip trailing whitespace per line
+    # 6. Decode residual HTML entities
+    md = html_module.unescape(md)
+
+    # 7. Strip HTML comment artifacts
+    md = re.sub(r"<!--.*?-->", "", md, flags=re.DOTALL)
+
+    # 8. Strip trailing whitespace per line
     md = _RE_TRAILING_WHITESPACE.sub("", md)
 
-    # 7. Collapse excessive blank lines
+    # 9. Collapse excessive blank lines
     md = _RE_EXCESSIVE_BLANKS.sub("\n\n", md)
 
-    # 8. Strip leading/trailing whitespace from the whole document
+    # 10. Strip leading/trailing whitespace from the whole document
     md = md.strip()
 
     return md
