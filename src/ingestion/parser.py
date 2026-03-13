@@ -309,6 +309,20 @@ _RE_ENTITY_ID = re.compile(r"\d{4,6}~\d{3,5}")
 # (e.g. "7HA-02944-AAAA-980EN", "7HA-02944-ABAA-030EN").
 _RE_DOC_ID = re.compile(r"\d+[A-Z]{0,2}-\d{4,6}-[A-Z]{4}-\d{3}[A-Z]{2}")
 
+# Headings that are empty table-of-contents / list-of-X stubs.  The PDF
+# parser captures these as section headers, but their body content (the
+# actual TOC entries or list items) is never extracted, leaving them as
+# contentless noise.
+_EMPTY_STUB_HEADINGS: frozenset[str] = frozenset({
+    "contents", "table of contents",
+    "list of tables", "list of figures",
+    "list of abbreviations", "list of acronyms",
+    "list of appendices", "list of annexes",
+    "list of references", "list of documents",
+    "list of drawings", "list of diagrams",
+    "list of illustrations", "list of symbols",
+})
+
 
 # Short texts that Docling's layout model sometimes misclassifies as
 # section headers.  Common in test-report templates where standalone
@@ -402,6 +416,12 @@ def _filter_document_elements(
         # ── Boilerplate: classification banners ─────────────────
         if config.strip_boilerplate_blocks and isinstance(item, SectionHeaderItem):
             if _is_classification_banner(item.text):
+                items_to_delete.append(item)
+                continue
+
+        # ── Empty stub sections (TOC, List of Figures, etc.) ───
+        if config.strip_boilerplate_blocks and isinstance(item, SectionHeaderItem):
+            if item.text.strip().lower() in _EMPTY_STUB_HEADINGS:
                 items_to_delete.append(item)
                 continue
 
