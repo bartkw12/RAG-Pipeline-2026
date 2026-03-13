@@ -571,41 +571,57 @@ _RE_RESIDUAL_BOILERPLATE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# Front-matter address block at the start of Thales-template documents.
+# Matches a company name heading followed by address, phone, fax, and URL lines.
+_RE_FRONT_MATTER = re.compile(
+    r"\A\s*"                                    # start of document
+    r"(?:#{1,6}\s+.+\n)?"                       # optional heading (company name)
+    r"(?:.*\n){0,5}?"                            # up to 5 lines of address
+    r"(?=.*(?:Tel\.|Fax\.|www\.))"               # lookahead: block must contain phone/fax/URL
+    r"(?:.*\n)*?"                                # consume lines
+    r"(?:.*www\.\S+.*\n)",                       # final line with URL
+    re.IGNORECASE,
+)
+
 
 def _clean_markdown(md: str) -> str:
     """Post-process a raw Markdown string for chunking quality.
 
     Applies the following transforms in order:
 
-    1. Remove residual “Page X of Y” lines.
-    2. Remove residual boilerplate blocks (classification banner + doc-ID table).
-    3. Demote false-positive headings ("## Passed" → "Passed").
-    4. Collapse repeated separator lines (``---``, ``===``, ``___``).
-    5. Strip trailing whitespace from every line.
-    6. Collapse 3+ consecutive blank lines down to 2.
-    7. Strip leading / trailing whitespace from the whole document.
+    1. Strip front-matter address block (company name, phone, fax, URL).
+    2. Remove residual "Page X of Y" lines.
+    3. Remove residual boilerplate blocks (classification banner + doc-ID table).
+    4. Demote false-positive headings ("## Passed" → "Passed").
+    5. Collapse repeated separator lines (``---``, ``===``, ``___``).
+    6. Strip trailing whitespace from every line.
+    7. Collapse 3+ consecutive blank lines down to 2.
+    8. Strip leading / trailing whitespace from the whole document.
     """
-    # 1. Remove "Page X of Y" artifacts
+    # 1. Strip front-matter address block
+    md = _RE_FRONT_MATTER.sub("", md)
+
+    # 2. Remove "Page X of Y" artifacts
     md = _RE_PAGE_X_OF_Y.sub("", md)
 
-    # 2. Remove residual boilerplate blocks
+    # 3. Remove residual boilerplate blocks
     md = _RE_RESIDUAL_BOILERPLATE.sub("", md)
 
-    # 3. Demote false-positive headings to plain text
+    # 4. Demote false-positive headings to plain text
     md = _RE_FALSE_POSITIVE_HEADING.sub(
         lambda m: m.group(0).lstrip("# ").strip(), md
     )
 
-    # 4. Collapse repeated separator lines into a single one
+    # 5. Collapse repeated separator lines into a single one
     md = _RE_REPEATED_SEPARATORS.sub("---\n", md)
 
-    # 5. Strip trailing whitespace per line
+    # 6. Strip trailing whitespace per line
     md = _RE_TRAILING_WHITESPACE.sub("", md)
 
-    # 6. Collapse excessive blank lines
+    # 7. Collapse excessive blank lines
     md = _RE_EXCESSIVE_BLANKS.sub("\n\n", md)
 
-    # 7. Strip leading/trailing whitespace from the whole document
+    # 8. Strip leading/trailing whitespace from the whole document
     md = md.strip()
 
     return md
