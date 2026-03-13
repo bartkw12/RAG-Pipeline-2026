@@ -677,7 +677,10 @@ def parse_document(
     _infer_heading_levels(doc)
 
     # ── 5. Export to Markdown ───────────────────────────────────
-    raw_md = doc.export_to_markdown()
+    raw_md = doc.export_to_markdown(
+        escape_underscores=False,
+        escape_html=False,
+    )
 
     # ── 6. Clean the Markdown ───────────────────────────────────
     cleaned_md = _clean_markdown(raw_md)
