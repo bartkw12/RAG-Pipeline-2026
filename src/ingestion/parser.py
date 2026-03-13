@@ -472,6 +472,54 @@ def _get_picture_description(item: PictureItem) -> str | None:
     return None
 
 
+# ── Heading hierarchy inference ─────────────────────────────────
+
+# Regex matching a leading section number like "1", "1.1", "4.2.3", etc.
+_RE_SECTION_NUMBER = re.compile(r"^(\d+(?:\.\d+)*)\b")
+
+
+def _infer_heading_levels(doc: DoclingDocument) -> DoclingDocument:
+    """Assign heading depth based on section-numbering patterns.
+
+    Docling's standard PDF pipeline assigns ``level=1`` to every
+    ``SectionHeaderItem``, producing flat ``##`` headings.  This
+    function infers hierarchy from numbering conventions:
+
+    * ``1``       → level 1 (``##``)
+    * ``1.1``     → level 2 (``###``)
+    * ``1.5.1``   → level 3 (``####``)
+    * ``4.2.3.1`` → level 4 (``#####``)
+
+    Non-numbered headings (e.g. "CONTENTS", "END OF DOCUMENT") keep
+    their current level (1).
+
+    Mutates *doc* in-place and returns it.
+    """
+    from docling_core.types.doc.document import SectionHeaderItem
+
+    adjusted = 0
+    for item, _level in doc.iterate_items():
+        if not isinstance(item, SectionHeaderItem):
+            continue
+
+        m = _RE_SECTION_NUMBER.match(item.text.strip())
+        if not m:
+            continue
+
+        # Count dot-separated parts: "1" → 1, "1.1" → 2, "4.2.3" → 3
+        parts = m.group(1).split(".")
+        new_level = len(parts)  # 1-based: 1 → ##, 2 → ###, etc.
+
+        if new_level != item.level:
+            item.level = new_level
+            adjusted += 1
+
+    if adjusted:
+        logger.info("Inferred heading levels for %d section header(s).", adjusted)
+
+    return doc
+
+
 # ── Post-export Markdown cleanup ─────────────────────────────────
 
 # Regex patterns compiled once at module level.
@@ -604,6 +652,9 @@ def parse_document(
 
     # ── 4. Filter noise elements ────────────────────────────────
     _filter_document_elements(doc, cfg)
+
+    # ── 4b. Infer heading hierarchy from section numbering ──────
+    _infer_heading_levels(doc)
 
     # ── 5. Export to Markdown ───────────────────────────────────
     raw_md = doc.export_to_markdown()
