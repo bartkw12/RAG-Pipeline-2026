@@ -405,16 +405,6 @@ def _filter_document_elements(
                 items_to_delete.append(item)
                 continue
 
-        # ── Misclassified headings ("Passed", "Failed", etc.) ───
-        if config.strip_boilerplate_blocks and isinstance(item, SectionHeaderItem):
-            if _is_false_positive_heading(item.text):
-                item.label = DocItemLabel.TEXT
-                logger.debug(
-                    "Demoted false-positive heading to text: '%s'",
-                    item.text,
-                )
-                continue
-
         # ── Boilerplate: repeated document-ID tables ────────────
         if config.strip_boilerplate_blocks and isinstance(item, TableItem):
             if _is_boilerplate_table(item):
@@ -492,6 +482,15 @@ _RE_PAGE_X_OF_Y = re.compile(
 )
 _RE_REPEATED_SEPARATORS = re.compile(r"(^[ \t]*[-=_]{3,}[ \t]*$\n?){2,}", re.MULTILINE)
 
+# Build a regex that matches headings whose text is a known false-positive
+# (e.g. "## Passed", "## Not applicable").  These are test-report result
+# values that Docling's layout model misclassified as section headers.
+# The regex demotes them to plain text (keeps the value, strips the "## ").
+_RE_FALSE_POSITIVE_HEADING = re.compile(
+    r"^##\s+(?:" + "|".join(re.escape(h) for h in sorted(_FALSE_POSITIVE_HEADINGS)) + r")\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
 
 def _clean_markdown(md: str) -> str:
     """Post-process a raw Markdown string for chunking quality.
@@ -499,24 +498,30 @@ def _clean_markdown(md: str) -> str:
     Applies the following transforms in order:
 
     1. Remove residual “Page X of Y” lines.
-    2. Collapse repeated separator lines (``---``, ``===``, ``___``).
-    3. Strip trailing whitespace from every line.
-    4. Collapse 3+ consecutive blank lines down to 2.
-    5. Strip leading / trailing whitespace from the whole document.
+    2. Demote false-positive headings ("## Passed" → "Passed").
+    3. Collapse repeated separator lines (``---``, ``===``, ``___``).
+    4. Strip trailing whitespace from every line.
+    5. Collapse 3+ consecutive blank lines down to 2.
+    6. Strip leading / trailing whitespace from the whole document.
     """
     # 1. Remove "Page X of Y" artifacts
     md = _RE_PAGE_X_OF_Y.sub("", md)
 
-    # 2. Collapse repeated separator lines into a single one
+    # 2. Demote false-positive headings to plain text
+    md = _RE_FALSE_POSITIVE_HEADING.sub(
+        lambda m: m.group(0).lstrip("# ").strip(), md
+    )
+
+    # 3. Collapse repeated separator lines into a single one
     md = _RE_REPEATED_SEPARATORS.sub("---\n", md)
 
-    # 3. Strip trailing whitespace per line
+    # 4. Strip trailing whitespace per line
     md = _RE_TRAILING_WHITESPACE.sub("", md)
 
-    # 4. Collapse excessive blank lines
+    # 5. Collapse excessive blank lines
     md = _RE_EXCESSIVE_BLANKS.sub("\n\n", md)
 
-    # 5. Strip leading/trailing whitespace from the whole document
+    # 6. Strip leading/trailing whitespace from the whole document
     md = md.strip()
 
     return md
