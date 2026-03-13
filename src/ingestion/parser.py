@@ -310,6 +310,23 @@ _RE_ENTITY_ID = re.compile(r"\d{4,6}~\d{3,5}")
 _RE_DOC_ID = re.compile(r"\d+[A-Z]{0,2}-\d{4,6}-[A-Z]{4}-\d{3}[A-Z]{2}")
 
 
+# Short texts that Docling's layout model sometimes misclassifies as
+# section headers.  Common in test-report templates where standalone
+# result values ("Passed", "Failed") occupy their own layout region.
+_FALSE_POSITIVE_HEADINGS: frozenset[str] = frozenset({
+    "passed", "failed", "not applicable", "n/a", "yes", "no",
+    "open", "closed", "verified", "not verified", "accepted",
+    "rejected", "pending", "cancelled", "deferred", "waived",
+    "completed", "incomplete", "ok", "nok", "tbd", "tbc",
+})
+
+
+def _is_false_positive_heading(text: str) -> bool:
+    """Return True if *text* is a short non-section phrase that was
+    likely misclassified as a section header by the layout model."""
+    return text.strip().lower() in _FALSE_POSITIVE_HEADINGS
+
+
 def _is_classification_banner(text: str) -> bool:
     """Return True if *text* looks like a security-classification heading."""
     return bool(_RE_CLASSIFICATION_BANNER.match(text.strip()))
@@ -386,6 +403,16 @@ def _filter_document_elements(
         if config.strip_boilerplate_blocks and isinstance(item, SectionHeaderItem):
             if _is_classification_banner(item.text):
                 items_to_delete.append(item)
+                continue
+
+        # ── Misclassified headings ("Passed", "Failed", etc.) ───
+        if config.strip_boilerplate_blocks and isinstance(item, SectionHeaderItem):
+            if _is_false_positive_heading(item.text):
+                item.label = DocItemLabel.TEXT
+                logger.debug(
+                    "Demoted false-positive heading to text: '%s'",
+                    item.text,
+                )
                 continue
 
         # ── Boilerplate: repeated document-ID tables ────────────
