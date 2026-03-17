@@ -106,13 +106,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parsing.add_argument(
         "--vlm",
         action="store_true",
-        help="Enable the Vision-Language Model pipeline for richer extraction.",
-    )
-    parsing.add_argument(
-        "--vlm-backend",
-        choices=["azure", "local"],
-        default="azure",
-        help='VLM backend to use (default: "azure").',
+        help="Enable GPT-4.1 vision analysis for figures and diagrams.",
     )
     parsing.add_argument(
         "--table-mode",
@@ -179,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
     azure_model: str = "gpt-4.1"
     azure_api_version: str = "2023-05-15"
 
-    if args.vlm and args.vlm_backend == "azure":
+    if args.vlm:
         from ..config.env_config import load_azure_vlm_config
 
         creds = load_azure_vlm_config()
@@ -191,7 +185,6 @@ def main(argv: list[str] | None = None) -> int:
     parser_config = ParserConfig(
         ocr_enabled=args.ocr,
         vlm_enabled=args.vlm,
-        vlm_backend=args.vlm_backend,
         table_mode=args.table_mode,
         strip_headers_footers=not args.no_strip_headers,
         strip_toc=not args.no_strip_toc,
