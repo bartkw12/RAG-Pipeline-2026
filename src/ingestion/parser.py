@@ -143,18 +143,13 @@ _IMAGE_DESCRIPTION_PROMPT = (
 def _build_converter(config: ParserConfig) -> DocumentConverter:
     """Construct a Docling ``DocumentConverter`` configured per *config*.
 
-    Two mutually exclusive pipeline modes are supported:
-
-    * **Standard PDF pipeline** (default) — layout analysis + OCR + table
-      extraction.  Used when ``vlm_enabled`` is False.
-    * **VLM pipeline** — uses a vision-language model for full-page
-      conversion.  Used when ``vlm_enabled`` is True.
+    Uses the standard PDF pipeline for layout analysis, OCR, and table
+    extraction.  When ``vlm_enabled`` is True, detected figures are
+    sent to Azure GPT-4.1 for description via ``PictureDescriptionApiOptions``.
 
     DOCX always uses Docling's simple pipeline (no special options needed).
     """
 
-    if config.vlm_enabled:
-        return _build_vlm_converter(config)
     return _build_standard_converter(config)
 
 
