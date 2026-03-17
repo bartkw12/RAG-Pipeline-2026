@@ -125,22 +125,19 @@ python -m src.cli.ingest --paths scanned.pdf --ocr
 
 This activates EasyOCR via Docling's pipeline. Text from scanned pages is extracted and included in the Markdown output.
 
-#### VLM (Vision-Language Model) pipeline
+#### VLM (Vision-Language Model) — figure and diagram analysis
 
-For richer extraction — including table understanding and diagram descriptions — enable the VLM pipeline:
+For richer extraction — including diagram descriptions and figure analysis — enable VLM:
 
 ```bash
-# Azure OpenAI backend (default)
 python -m src.cli.ingest --paths complex.pdf --vlm
-
-# Local SmolDocling backend
-python -m src.cli.ingest --paths complex.pdf --vlm --vlm-backend local
 ```
 
 When VLM is enabled:
-- **Azure backend** (`--vlm-backend azure`, default): Uses your Azure OpenAI credentials from `config_V2025_05_31.json`. Requires an endpoint with a vision-capable model (e.g. GPT-4.1).
-- **Local backend** (`--vlm-backend local`): Uses the SmolDocling Transformers model locally. No API key needed, but requires GPU for reasonable performance.
-- **Image descriptions**: Content-bearing figures and diagrams are described in text by the VLM before images are stripped. The prompt focuses on *what information the figure conveys*, not its visual style. Descriptions appear as `[Figure: ...]` blocks in the Markdown.
+- Detected figures, diagrams, schematics, and charts are sent to **Azure GPT-4.1** for description using your credentials from `config_V2025_05_31.json`.
+- Descriptions appear as `[Figure: ...]` blocks in the Markdown, focusing on technical content — visualization type, key components, signals, and relationships.
+- The standard pipeline's layout analysis, OCR, table extraction, and all pre/post-processing filters remain active. VLM only adds figure descriptions on top.
+- Use `--keep-images` to disable figure descriptions even when `--vlm` is passed.
 
 #### Table extraction mode
 
@@ -181,7 +178,7 @@ python -m src.cli.ingest --paths doc.pdf --keep-images
 All parsing flags can be combined with each other and with selection/behaviour flags:
 
 ```bash
-# Full pipeline: OCR + VLM + Azure, force re-ingest, verbose
+# Full pipeline: OCR + VLM + force re-ingest, verbose
 python -m src.cli.ingest --paths "D:\Specs\*.pdf" --ocr --vlm --force --verbose
 
 # Drop-folder mode with fast tables and no header stripping
@@ -219,11 +216,8 @@ python -m src.cli.ingest --force
 # Enable OCR for scanned documents
 python -m src.cli.ingest --ocr
 
-# Enable VLM pipeline (Azure backend by default)
+# Enable VLM figure analysis
 python -m src.cli.ingest --vlm
-
-# Enable VLM with local SmolDocling model
-python -m src.cli.ingest --vlm --vlm-backend local
 
 # Choose table extraction mode
 python -m src.cli.ingest --table-mode fast
