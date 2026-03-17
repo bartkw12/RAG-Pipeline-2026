@@ -131,8 +131,12 @@ class ParsedDocument:
 
 # Prompt used when VLM describes content-bearing figures.
 _IMAGE_DESCRIPTION_PROMPT = (
-    "Describe the content of this technical diagram or figure in 2-3 sentences. "
-    "Focus on what information it conveys, not its visual style."
+    "You are analyzing a technical engineering document. "
+    "Describe the content of this figure, diagram, schematic, or chart in detail "
+    "(3-5 sentences). Identify: what type of visualization it is (e.g., block diagram, "
+    "circuit schematic, waveform, flowchart, test setup photo); the key components, "
+    "signals, or data shown; and what technical information or relationships it conveys. "
+    "Use precise engineering terminology. Do not describe visual styling, colors, or layout."
 )
 
 
