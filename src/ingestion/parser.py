@@ -154,7 +154,11 @@ def _build_converter(config: ParserConfig) -> DocumentConverter:
 
 
 def _build_standard_converter(config: ParserConfig) -> DocumentConverter:
-    """Build a converter using the standard PDF pipeline (no VLM)."""
+    """Build a converter using the standard PDF pipeline.
+
+    When ``config.vlm_enabled`` is True, detected figures are sent to
+    Azure GPT-4.1 for description via ``PictureDescriptionApiOptions``.
+    """
 
     # ── Table structure ─────────────────────────────────────────
     table_mode = (
@@ -171,16 +175,48 @@ def _build_standard_converter(config: ParserConfig) -> DocumentConverter:
         else OcrAutoOptions()
     )
 
+    # ── Picture description (Azure GPT-4.1) ─────────────────────
+    do_picture_desc = config.vlm_enabled and config.describe_images
+    pic_desc_options: PictureDescriptionApiOptions | None = None
+
+    if do_picture_desc:
+        from pydantic import AnyUrl
+
+        if not config.azure_endpoint or not config.azure_api_key:
+            raise ValueError(
+                "VLM picture descriptions require 'azure_endpoint' and "
+                "'azure_api_key' in ParserConfig."
+            )
+
+        base = config.azure_endpoint.rstrip("/")
+        pic_url = (
+            f"{base}/openai/deployments/{config.azure_model}"
+            f"/chat/completions?api-version={config.azure_api_version}"
+        )
+
+        pic_desc_options = PictureDescriptionApiOptions(
+            url=AnyUrl(pic_url),
+            headers={"api-key": config.azure_api_key},
+            prompt=_IMAGE_DESCRIPTION_PROMPT,
+            timeout=60.0,
+        )
+
     # ── Assemble PDF pipeline options ───────────────────────────
-    pdf_pipeline_opts = PdfPipelineOptions(
+    pipeline_kwargs: dict = dict(
         do_ocr=config.ocr_enabled,
         do_table_structure=True,
         table_structure_options=table_options,
         ocr_options=ocr_options,
         do_picture_classification=True,
-        do_picture_description=False,
-        generate_picture_images=False,
+        do_picture_description=do_picture_desc,
+        generate_picture_images=do_picture_desc,
     )
+
+    if do_picture_desc:
+        pipeline_kwargs["picture_description_options"] = pic_desc_options
+        pipeline_kwargs["enable_remote_services"] = True
+
+    pdf_pipeline_opts = PdfPipelineOptions(**pipeline_kwargs)
 
     return DocumentConverter(
         allowed_formats=[InputFormat.PDF, InputFormat.DOCX],
