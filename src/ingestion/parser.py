@@ -228,8 +228,8 @@ def _build_vlm_converter(config: ParserConfig) -> DocumentConverter:
         vlm_options = ApiVlmOptions(  # type: ignore[call-arg]
             url=AnyUrl(url),
             headers={"api-key": config.azure_api_key},
-            prompt="Convert this page to docling.",
-            response_format=ResponseFormat.DOCTAGS,
+            prompt="Convert this page to markdown.",
+            response_format=ResponseFormat.MARKDOWN,
             timeout=120.0,
         )
 

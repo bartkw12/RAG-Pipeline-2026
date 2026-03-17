@@ -106,9 +106,17 @@ def load_azure_vlm_config(
     if not api_key:
         raise KeyError(f"No 'key' or 'api_key' in section '{section}'.")
 
-    # Pick the first model listed, or fall back to "gpt-4.1"
+    # Pick a model: prefer an explicit "model" key, then look for
+    # "gpt-4.1" in the models dict, finally fall back to first listed.
     models = sec.get("models", {})
-    model = sec.get("model") or (next(iter(models.values())) if models else "gpt-4.1")
+    if sec.get("model"):
+        model = sec["model"]
+    elif "gpt-4.1" in models.values():
+        model = "gpt-4.1"
+    elif models:
+        model = next(iter(models.values()))
+    else:
+        model = "gpt-4.1"
 
     return {
         "endpoint": endpoint,
