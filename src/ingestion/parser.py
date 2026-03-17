@@ -651,16 +651,8 @@ def parse_document(
     if not title:
         title = path.stem
 
-    # ── DEBUG: count items before filtering ───────────────────
-    _pre_count = sum(1 for _ in doc.iterate_items())
-    logger.debug("Document items BEFORE filtering: %d", _pre_count)
-
     # ── 4. Filter noise elements ────────────────────────────────
     _filter_document_elements(doc, cfg)
-
-    # ── DEBUG: count items after filtering ──────────────────────
-    _post_count = sum(1 for _ in doc.iterate_items())
-    logger.debug("Document items AFTER filtering: %d", _post_count)
 
     # ── 4b. Infer heading hierarchy from section numbering ──────
     _infer_heading_levels(doc)
@@ -670,13 +662,9 @@ def parse_document(
         escape_underscores=False,
         escape_html=False,
     )
-    logger.debug("Raw Markdown length: %d chars", len(raw_md))
-    if raw_md:
-        logger.debug("Raw Markdown preview (first 500 chars): %s", raw_md[:500])
 
     # ── 6. Clean the Markdown ───────────────────────────────────
     cleaned_md = _clean_markdown(raw_md)
-    logger.debug("Cleaned Markdown length: %d chars", len(cleaned_md))
 
     if not cleaned_md:
         logger.warning("Parsing produced empty Markdown for '%s'.", path.name)
