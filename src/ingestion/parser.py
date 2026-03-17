@@ -270,7 +270,7 @@ def _build_vlm_converter(config: ParserConfig) -> DocumentConverter:
         do_picture_classification=True,
         do_picture_description=do_picture_desc,
         generate_page_images=True,
-        generate_picture_images=config.describe_images,
+        generate_picture_images=False,
         picture_description_options=pic_desc_options,
         enable_remote_services=True,
     )
@@ -679,7 +679,7 @@ def parse_document(
 
     # ── 2. Convert document via Docling ─────────────────────────
     try:
-        result = conv.convert(source=path, raises_on_error=True)
+        result = conv.convert(source=path, raises_on_error=False)
     except Exception:
         logger.exception("Docling conversion failed for '%s'.", path.name)
         return None
