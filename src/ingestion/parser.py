@@ -57,16 +57,10 @@ class ParserConfig:
 
     # ── VLM (vision-language model) ─────────────────────────────
     vlm_enabled: bool = False
-    """Activate a vision-language model for layout understanding
-    and image description."""
+    """Activate Azure GPT-4.1 vision analysis for figures and
+    diagrams detected by the standard pipeline."""
 
-    vlm_backend: Literal["azure", "local"] = "azure"
-    """Which VLM backend to use.
-    - ``"azure"``  — Azure OpenAI endpoint (requires credentials).
-    - ``"local"``  — Docling's built-in SmolVLM (runs on-device).
-    """
-
-    # ── Azure OpenAI credentials (only used when vlm_backend="azure") ──
+    # ── Azure OpenAI credentials (used when vlm_enabled=True) ──
     azure_endpoint: str | None = None
     azure_api_key: str | None = None
     azure_model: str = "gpt-4.1"
