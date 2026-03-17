@@ -272,6 +272,7 @@ def _build_vlm_converter(config: ParserConfig) -> DocumentConverter:
         generate_page_images=True,
         generate_picture_images=config.describe_images,
         picture_description_options=pic_desc_options,
+        enable_remote_services=True,
     )
 
     return DocumentConverter(
