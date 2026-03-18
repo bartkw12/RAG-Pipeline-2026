@@ -636,9 +636,13 @@ def _filter_document_elements(
             vlm_text = vlm_map.get(ref_key)
 
             if vlm_text:
-                doc.add_text(
+                # Insert the description *before* the picture so it appears
+                # in-place in the document, not appended at the end.
+                doc.insert_text(
+                    sibling=item,
                     label=DocItemLabel.PARAGRAPH,
                     text=vlm_text,
+                    after=False,
                 )
                 items_to_delete.append(item)
                 continue
