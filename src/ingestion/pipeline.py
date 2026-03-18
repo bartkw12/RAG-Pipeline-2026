@@ -62,9 +62,9 @@ class PipelineSummary:
     def __str__(self) -> str:
         lines = [
             "",
-            "═" * 56,
+            "=" * 56,
             "  Ingestion Summary",
-            "═" * 56,
+            "=" * 56,
             f"  Selection mode : {self.selection_mode.value}",
             f"  Files selected : {self.total_selected}",
             f"  New ingested   : {self.new_ingested}",
@@ -72,13 +72,13 @@ class PipelineSummary:
             f"  Skipped (dup)  : {self.skipped_unchanged}",
             f"  Skipped (ext)  : {self.skipped_unsupported}",
             f"  Failed         : {self.failed}",
-            "═" * 56,
+            "=" * 56,
         ]
         if self.warnings:
             lines.append("  Warnings:")
             for w in self.warnings:
                 lines.append(f"    - {w}")
-            lines.append("═" * 56)
+            lines.append("=" * 56)
         return "\n".join(lines)
 
 # ── File movement ───────────────────────────────────────────────

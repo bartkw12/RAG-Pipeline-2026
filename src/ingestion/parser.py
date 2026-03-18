@@ -18,14 +18,16 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import (
     EasyOcrOptions,
     OcrAutoOptions,
     PdfPipelineOptions,
-    PictureDescriptionApiOptions,
     TableFormerMode,
     TableStructureOptions,
 )
@@ -125,8 +127,8 @@ class ParsedDocument:
 
 # ── Converter builder ───────────────────────────────────────────
 
-# Prompt used when VLM describes content-bearing figures.
-_IMAGE_DESCRIPTION_PROMPT = (
+# System prompt for GPT-4.1 VLM figure descriptions.
+_VLM_SYSTEM_PROMPT = (
     "You are analyzing a technical engineering document. "
     "Describe the content of this figure, diagram, schematic, or chart in detail "
     "(3-5 sentences). Identify: what type of visualization it is (e.g., block diagram, "
@@ -140,10 +142,8 @@ def _build_converter(config: ParserConfig) -> DocumentConverter:
     """Construct a Docling ``DocumentConverter`` configured per *config*.
 
     Uses the standard PDF pipeline for layout analysis, OCR, and table
-    extraction.  When ``vlm_enabled`` is True, detected figures are
-    sent to Azure GPT-4.1 for description via ``PictureDescriptionApiOptions``.
-
-    DOCX always uses Docling's simple pipeline (no special options needed).
+    extraction.  Picture descriptions are handled separately by
+    ``_describe_pictures()`` after conversion.
     """
 
     return _build_standard_converter(config)
@@ -152,8 +152,9 @@ def _build_converter(config: ParserConfig) -> DocumentConverter:
 def _build_standard_converter(config: ParserConfig) -> DocumentConverter:
     """Build a converter using the standard PDF pipeline.
 
-    When ``config.vlm_enabled`` is True, detected figures are sent to
-    Azure GPT-4.1 for description via ``PictureDescriptionApiOptions``.
+    Picture classification is enabled so the filter can distinguish
+    logos/icons from content figures.  VLM descriptions are done in
+    a separate post-conversion step.
     """
 
     # ── Table structure ─────────────────────────────────────────
@@ -171,48 +172,18 @@ def _build_standard_converter(config: ParserConfig) -> DocumentConverter:
         else OcrAutoOptions()
     )
 
-    # ── Picture description (Azure GPT-4.1) ─────────────────────
-    do_picture_desc = config.vlm_enabled and config.describe_images
-    pic_desc_options: PictureDescriptionApiOptions | None = None
-
-    if do_picture_desc:
-        from pydantic import AnyUrl
-
-        if not config.azure_endpoint or not config.azure_api_key:
-            raise ValueError(
-                "VLM picture descriptions require 'azure_endpoint' and "
-                "'azure_api_key' in ParserConfig."
-            )
-
-        base = config.azure_endpoint.rstrip("/")
-        pic_url = (
-            f"{base}/openai/deployments/{config.azure_model}"
-            f"/chat/completions?api-version={config.azure_api_version}"
-        )
-
-        pic_desc_options = PictureDescriptionApiOptions(
-            url=AnyUrl(pic_url),
-            headers={"api-key": config.azure_api_key},
-            prompt=_IMAGE_DESCRIPTION_PROMPT,
-            timeout=60.0,
-        )
-
     # ── Assemble PDF pipeline options ───────────────────────────
-    pipeline_kwargs: dict = dict(
+    # Note: do_picture_description=False — we handle VLM separately
+    # to avoid Pillow crashes and to inject figure caption context.
+    pdf_pipeline_opts = PdfPipelineOptions(
         do_ocr=config.ocr_enabled,
         do_table_structure=True,
         table_structure_options=table_options,
         ocr_options=ocr_options,
         do_picture_classification=True,
-        do_picture_description=do_picture_desc,
-        generate_picture_images=do_picture_desc,
+        do_picture_description=False,
+        generate_picture_images=False,
     )
-
-    if do_picture_desc:
-        pipeline_kwargs["picture_description_options"] = pic_desc_options
-        pipeline_kwargs["enable_remote_services"] = True
-
-    pdf_pipeline_opts = PdfPipelineOptions(**pipeline_kwargs)
 
     return DocumentConverter(
         allowed_formats=[InputFormat.PDF, InputFormat.DOCX],
@@ -224,6 +195,283 @@ def _build_standard_converter(config: ParserConfig) -> DocumentConverter:
             InputFormat.DOCX: WordFormatOption(),
         },
     )
+
+
+# ── VLM figure description (Azure GPT-4.1) ─────────────────────
+
+
+def _resolve_ref(doc: DoclingDocument, ref) -> object | None:
+    """Resolve a ``RefItem`` (JSON pointer like ``#/texts/42``) on *doc*."""
+    cref = getattr(ref, "cref", None)
+    if not cref or not isinstance(cref, str):
+        return None
+    parts = cref.lstrip("#/").split("/")
+    if len(parts) != 2:
+        return None
+    collection_name, index_str = parts
+    collection = getattr(doc, collection_name, None)
+    if collection is None or not isinstance(collection, list):
+        return None
+    try:
+        return collection[int(index_str)]
+    except (ValueError, IndexError):
+        return None
+
+
+def _get_caption_text(doc: DoclingDocument, item: PictureItem) -> str:
+    """Extract the caption/title text for a ``PictureItem``."""
+    parts: list[str] = []
+    for ref in item.captions or []:
+        ref_item = _resolve_ref(doc, ref)
+        text = getattr(ref_item, "text", "") or ""
+        if text.strip():
+            parts.append(text.strip())
+    return " ".join(parts)
+
+
+_RE_FIGURE_NUMBER = re.compile(r"(?:Figure|Fig\.?)\s*(\d+)", re.IGNORECASE)
+
+_RE_FIGURE_PREFIX = re.compile(
+    r"^(?:Figure|Fig\.?)\s*\d+\s*[:.\-]\s*", re.IGNORECASE
+)
+
+
+def _extract_figure_number(caption: str) -> str | None:
+    """Extract figure number from a caption like 'Figure 15: ...'."""
+    m = _RE_FIGURE_NUMBER.search(caption)
+    return m.group(1) if m else None
+
+
+def _caption_without_prefix(caption: str) -> str:
+    """Strip the 'Figure N:' prefix from a caption if present."""
+    return _RE_FIGURE_PREFIX.sub("", caption).strip()
+
+
+def _call_azure_vlm(
+    image_bytes: bytes,
+    prompt: str,
+    config: ParserConfig,
+) -> str | None:
+    """Send an image to Azure GPT-4.1 and return the description text."""
+    import base64
+
+    import requests
+
+    base = (config.azure_endpoint or "").rstrip("/")
+    url = (
+        f"{base}/openai/deployments/{config.azure_model}"
+        f"/chat/completions?api-version={config.azure_api_version}"
+    )
+
+    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    payload = {
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{image_b64}"
+                        },
+                    },
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ],
+    }
+
+    try:
+        resp = requests.post(
+            url,
+            headers={"api-key": config.azure_api_key},
+            json=payload,
+            timeout=60,
+        )
+        if not resp.ok:
+            logger.warning(
+                "Azure VLM API returned %s: %s",
+                resp.status_code, resp.text[:200],
+            )
+            return None
+        data = resp.json()
+        return data["choices"][0]["message"]["content"].strip()
+    except Exception:
+        logger.exception("Azure VLM API call failed.")
+        return None
+
+
+def _crop_picture_image(
+    item: PictureItem,
+    pdf_pages: dict[int, Image.Image],
+) -> bytes | None:
+    """Crop a picture from a pre-rendered page image and return PNG bytes.
+
+    *pdf_pages* maps 1-based page numbers to rendered PIL images.
+    Returns None on any error (corrupt crop, missing page, etc.).
+    """
+    from io import BytesIO
+
+    try:
+        if not item.prov:
+            return None
+
+        prov = item.prov[0]
+        page_no = prov.page_no
+        page_img = pdf_pages.get(page_no)
+        if page_img is None:
+            return None
+
+        bbox = prov.bbox
+        # Docling bbox: l, t, r, b in points (72 dpi).
+        # Page rendered at scale=2.0 → 144 dpi.
+        scale = 2.0
+        left = int(bbox.l * scale)
+        top = int(bbox.t * scale)
+        right = int(bbox.r * scale)
+        bottom = int(bbox.b * scale)
+
+        # Clamp to page bounds
+        pw, ph = page_img.size
+        left = max(0, min(left, pw))
+        top = max(0, min(top, ph))
+        right = max(left + 1, min(right, pw))
+        bottom = max(top + 1, min(bottom, ph))
+
+        cropped = page_img.crop((left, top, right, bottom))
+        buf = BytesIO()
+        cropped.save(buf, "PNG")
+        return buf.getvalue()
+    except Exception:
+        logger.debug(
+            "Failed to crop picture at page %s: %s",
+            getattr(item.prov[0], "page_no", "?") if item.prov else "?",
+            item.self_ref,
+            exc_info=True,
+        )
+        return None
+
+
+def _render_pdf_pages(
+    pdf_path: Path,
+    page_numbers: set[int],
+    scale: int = 2,
+) -> dict[int, Image.Image]:
+    """Render specific PDF pages as PIL images using pypdfium2.
+
+    *page_numbers* are 1-based.  Returns a dict mapping page number
+    to its rendered PIL image.
+    """
+    import pypdfium2
+
+    pages: dict[int, Image.Image] = {}
+    try:
+        pdf = pypdfium2.PdfDocument(str(pdf_path))
+        for page_no in sorted(page_numbers):
+            idx = page_no - 1  # pypdfium2 uses 0-based indexing
+            if 0 <= idx < len(pdf):
+                try:
+                    page = pdf[idx]
+                    bitmap = page.render(scale=scale)
+                    pages[page_no] = bitmap.to_pil()
+                except Exception:
+                    logger.debug(
+                        "Failed to render page %d from '%s'.",
+                        page_no, pdf_path.name, exc_info=True,
+                    )
+        pdf.close()
+    except Exception:
+        logger.warning(
+            "Could not open PDF '%s' for image rendering.", pdf_path.name,
+            exc_info=True,
+        )
+    return pages
+
+
+def _describe_pictures(
+    doc: DoclingDocument,
+    pdf_path: Path,
+    config: ParserConfig,
+) -> dict[str, str]:
+    """Call Azure GPT-4.1 for each content-bearing picture.
+
+    Returns a dict mapping ``item.self_ref`` → formatted description
+    string like ``[VLM - Figure 3: Test Set-up] This is a ...``.
+
+    Skips logos/icons and pictures that fail to crop.
+    """
+    if not (config.vlm_enabled and config.describe_images):
+        return {}
+
+    if not config.azure_endpoint or not config.azure_api_key:
+        logger.warning(
+            "VLM enabled but Azure credentials missing — skipping picture descriptions."
+        )
+        return {}
+
+    # Collect pictures that need descriptions and their page numbers
+    pictures: list[tuple[PictureItem, str, str | None, str]] = []
+    page_numbers: set[int] = set()
+    fig_counter = 0
+
+    for item, _level in doc.iterate_items():
+        if not isinstance(item, PictureItem):
+            continue
+
+        # Skip logos/icons
+        classes = _get_picture_classes(item)
+        if classes & _LOGO_ICON_CLASSES:
+            continue
+
+        fig_counter += 1
+
+        caption = _get_caption_text(doc, item)
+        fig_num = _extract_figure_number(caption)
+        fig_label = f"Figure {fig_num}" if fig_num else f"Figure {fig_counter}"
+
+        if item.prov:
+            page_numbers.add(item.prov[0].page_no)
+        pictures.append((item, caption, fig_num, fig_label))
+
+    if not pictures:
+        return {}
+
+    # Render only the pages that contain pictures
+    logger.info(
+        "Rendering %d page(s) for %d picture(s) ...",
+        len(page_numbers), len(pictures),
+    )
+    pdf_pages = _render_pdf_pages(pdf_path, page_numbers)
+
+    descriptions: dict[str, str] = {}
+
+    for item, caption, fig_num, fig_label in pictures:
+        image_bytes = _crop_picture_image(item, pdf_pages)
+        if image_bytes is None:
+            logger.debug("Skipping %s — could not crop image.", fig_label)
+            continue
+
+        # Build a prompt with figure caption context
+        prompt_parts = [_VLM_SYSTEM_PROMPT]
+        if caption:
+            prompt_parts.append(
+                f'\nThe document labels this image as: "{caption}".'
+            )
+        prompt = "\n".join(prompt_parts)
+
+        logger.info("Requesting VLM description for %s ...", fig_label)
+        description = _call_azure_vlm(image_bytes, prompt, config)
+
+        if description:
+            short_cap = _caption_without_prefix(caption) if caption else ""
+            tag = f"[VLM - {fig_label}" + (f": {short_cap}" if short_cap else "") + "]"
+            descriptions[str(item.self_ref)] = f"{tag} {description}"
+            logger.info("Got VLM description for %s (%d chars).", fig_label, len(description))
+        else:
+            logger.warning("No VLM description returned for %s.", fig_label)
+
+    return descriptions
 
 
 # ── Pre-export element filtering ────────────────────────────────
@@ -309,6 +557,7 @@ def _is_boilerplate_table(table_item: object) -> bool:
 def _filter_document_elements(
     doc: DoclingDocument,
     config: ParserConfig,
+    vlm_descriptions: dict[str, str] | None = None,
 ) -> DoclingDocument:
     """Remove noise elements from a Docling document **in-place**.
 
@@ -317,24 +566,21 @@ def _filter_document_elements(
     annotations.  All matching elements are removed in a single
     ``delete_items`` call at the end to avoid iterator invalidation.
 
-    For pictures that are NOT classified as logos/icons (i.e. real
-    diagrams or charts), if the VLM produced a ``DescriptionAnnotation``
-    we keep the description text by inserting a ``[Figure: …]`` text
-    element before deleting the picture.
+    For content-bearing pictures, if ``vlm_descriptions`` contains
+    a description (keyed by ``item.self_ref``), the tagged VLM text
+    is inserted before deleting the picture.
 
     Returns the same ``doc`` reference (mutated).
     """
     from docling_core.types.doc.document import (
-        DescriptionAnnotation,
         DocItem,
-        PictureClassificationData,
         PictureItem,
         SectionHeaderItem,
         TableItem,
-        TextItem,
     )
     from docling_core.types.doc.labels import DocItemLabel
 
+    vlm_map = vlm_descriptions or {}
     items_to_delete: list[NodeItem] = []
 
     for item, _level in doc.iterate_items():
@@ -375,28 +621,25 @@ def _filter_document_elements(
         # ── Pictures (logos, icons, figures) ────────────────────
         if isinstance(item, PictureItem):
             classification_labels = _get_picture_classes(item)
-
             is_logo_or_icon = bool(classification_labels & _LOGO_ICON_CLASSES)
 
             if config.strip_logos_icons and is_logo_or_icon:
                 items_to_delete.append(item)
                 continue
 
-            # Content-bearing picture — try to preserve its description.
-            description = _get_picture_description(item)
+            # Content-bearing picture — insert VLM description if available.
+            ref_key = str(item.self_ref)
+            vlm_text = vlm_map.get(ref_key)
 
-            if description:
-                # Insert a text paragraph with the description,
-                # then schedule the picture for removal.
+            if vlm_text:
                 doc.add_text(
                     label=DocItemLabel.PARAGRAPH,
-                    text=f"[Figure: {description}]",
+                    text=vlm_text,
                 )
                 items_to_delete.append(item)
                 continue
 
-            # No description available — strip picture entirely
-            # (keeps file lean for chunking/embedding).
+            # No description — strip picture entirely.
             items_to_delete.append(item)
             continue
 
@@ -423,14 +666,7 @@ def _get_picture_classes(item: PictureItem) -> set[str]:
     return classes
 
 
-def _get_picture_description(item: PictureItem) -> str | None:
-    """Return the first description annotation text, if any."""
-    from docling_core.types.doc.document import DescriptionAnnotation
 
-    for ann in item.annotations:
-        if isinstance(ann, DescriptionAnnotation) and ann.text.strip():
-            return ann.text.strip()
-    return None
 
 
 # ── Heading hierarchy inference ─────────────────────────────────
@@ -624,14 +860,26 @@ def parse_document(
         return None
 
     if result.status not in (ConversionStatus.SUCCESS, ConversionStatus.PARTIAL_SUCCESS):
-        logger.error(
-            "Conversion returned status '%s' for '%s'.",
-            result.status.name,
-            path.name,
-        )
-        return None
-
-    doc = result.document
+        # Docling may report FAILURE even when most pages were extracted.
+        # Proceed if the document object contains any usable content.
+        doc = result.document
+        has_content = doc is not None and any(True for _ in doc.iterate_items())
+        if has_content:
+            logger.warning(
+                "Conversion returned status '%s' for '%s' — "
+                "proceeding with partially extracted content.",
+                result.status.name,
+                path.name,
+            )
+        else:
+            logger.error(
+                "Conversion returned status '%s' for '%s' with no usable content.",
+                result.status.name,
+                path.name,
+            )
+            return None
+    else:
+        doc = result.document
 
     # ── 3. Extract metadata before filtering ────────────────────
     page_count = result.input.page_count
@@ -651,8 +899,11 @@ def parse_document(
     if not title:
         title = path.stem
 
+    # ── 3b. VLM figure descriptions (Azure GPT-4.1) ────────────
+    vlm_descriptions = _describe_pictures(doc, path, cfg)
+
     # ── 4. Filter noise elements ────────────────────────────────
-    _filter_document_elements(doc, cfg)
+    _filter_document_elements(doc, cfg, vlm_descriptions=vlm_descriptions)
 
     # ── 4b. Infer heading hierarchy from section numbering ──────
     _infer_heading_levels(doc)
