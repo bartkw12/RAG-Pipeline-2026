@@ -586,6 +586,8 @@ def _filter_document_elements(
 
     vlm_map = vlm_descriptions or {}
     items_to_delete: list[NodeItem] = []
+    # Deferred VLM insertions: (sibling_item, text) — applied after iteration.
+    vlm_inserts: list[tuple[NodeItem, str]] = []
 
     for item, _level in doc.iterate_items():
         if not isinstance(item, DocItem):
@@ -631,25 +633,29 @@ def _filter_document_elements(
                 items_to_delete.append(item)
                 continue
 
-            # Content-bearing picture — insert VLM description if available.
+            # Content-bearing picture — queue VLM description for
+            # in-place insertion (done after iteration to avoid
+            # mutating the tree while iterating).
             ref_key = str(item.self_ref)
             vlm_text = vlm_map.get(ref_key)
 
             if vlm_text:
-                # Insert the description *before* the picture so it appears
-                # in-place in the document, not appended at the end.
-                doc.insert_text(
-                    sibling=item,
-                    label=DocItemLabel.PARAGRAPH,
-                    text=vlm_text,
-                    after=False,
-                )
+                vlm_inserts.append((item, vlm_text))
                 items_to_delete.append(item)
                 continue
 
             # No description — strip picture entirely.
             items_to_delete.append(item)
             continue
+
+    # ── Insert VLM descriptions in-place (before each picture) ──
+    for sibling, text in vlm_inserts:
+        doc.insert_text(
+            sibling=sibling,
+            label=DocItemLabel.PARAGRAPH,
+            text=text,
+            after=False,
+        )
 
     # ── Bulk delete ─────────────────────────────────────────────
     if items_to_delete:
