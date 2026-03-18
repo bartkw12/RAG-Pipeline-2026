@@ -427,6 +427,10 @@ def _describe_pictures(
         fig_counter += 1
 
         caption = _get_caption_text(doc, item)
+        if not caption:
+            logger.debug("Skipping picture %d — no caption.", fig_counter)
+            continue
+
         fig_num = _extract_figure_number(caption)
         fig_label = f"Figure {fig_num}" if fig_num else f"Figure {fig_counter}"
 
