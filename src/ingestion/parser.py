@@ -936,6 +936,21 @@ _RE_TRAILING_WHITESPACE = re.compile(r"[ \t]+$", re.MULTILINE)
 _RE_PAGE_X_OF_Y = re.compile(
     r"^\s*page\s+\d+\s+of\s+\d+\s*$", re.IGNORECASE | re.MULTILINE
 )
+
+# Orphaned timestamp lines extracted by OCR from screenshot metadata
+# embedded in PDF pages (e.g. "2014", "0845", "Sep 2014 11:28:53",
+# "4 Sep 2014 14:23:08").  These sit on their own line and carry no
+# semantic value.
+_RE_ORPHANED_TIMESTAMP = re.compile(
+    r"^\s*"
+    r"(?:"
+    r"\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?"  # "4 Sep 2014 14:23:08"
+    r"|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?"          # "Sep 2014 11:28:53"
+    r"|\d{4}"                                                                                                       # bare year "2014" or time "0845"
+    r")\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
 _RE_REPEATED_SEPARATORS = re.compile(
     r"(^[ \t]*[-=_]{3,}[ \t]*$\s*){2,}", re.MULTILINE
 )
@@ -997,6 +1012,9 @@ def _clean_markdown(md: str) -> str:
 
     # 2. Remove "Page X of Y" artifacts
     md = _RE_PAGE_X_OF_Y.sub("", md)
+
+    # 2b. Remove orphaned timestamp lines (OCR screenshot metadata)
+    md = _RE_ORPHANED_TIMESTAMP.sub("", md)
 
     # 3. Remove residual boilerplate blocks
     md = _RE_RESIDUAL_BOILERPLATE.sub("", md)
