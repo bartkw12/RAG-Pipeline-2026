@@ -774,7 +774,10 @@ _RE_TC_START = re.compile(r"^Test case:\s*$", re.MULTILINE)
 _RE_SECTION_BREAK = re.compile(r"^#{1,3}\s+\d+(?:\.\d+)*\s+", re.MULTILINE)
 
 # Bracket-enclosed traceability / requirement IDs at the end of a block.
-_RE_BRACKET_IDS = re.compile(r"^\[([\w_./-]+)\](?:\[([\w_./-]+)\])*\s*$")
+# Each bracketed token must end with digits to distinguish real IDs
+# (e.g. [FVTSR_PAM_0002], [HW-IRS_PAM_266]) from document references
+# (e.g. [CD_PAM], [HWADD_TOP], [DERATING]).
+_RE_BRACKET_IDS = re.compile(r"^(\[[\w_./-]*\d+\])+\s*$")
 
 
 def _extract_trailing_ids(value: str) -> tuple[str, list[str]]:
