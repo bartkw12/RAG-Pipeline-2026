@@ -129,12 +129,17 @@ class ParsedDocument:
 
 # System prompt for GPT-4.1 VLM figure descriptions.
 _VLM_SYSTEM_PROMPT = (
-    "You are analyzing a technical engineering document. "
-    "Describe the content of this figure, diagram, schematic, or chart in detail "
-    "(3-5 sentences). Identify: what type of visualization it is (e.g., block diagram, "
-    "circuit schematic, waveform, flowchart, test setup photo); the key components, "
-    "signals, or data shown; and what technical information or relationships it conveys. "
-    "Use precise engineering terminology. Do not describe visual styling, colors, or layout."
+    "You are analyzing a figure from a technical engineering document. "
+    "In 2-4 sentences, state: (1) what type of figure this is "
+    "(e.g., oscilloscope capture, block diagram, flowchart, schematic, "
+    "test setup photo, timing diagram, plot/graph); "
+    "(2) the specific measurements, values, labels, or parameters "
+    "visible in the image (e.g., voltage levels, frequencies, time/div, "
+    "axis values, signal names, component IDs, decision nodes); "
+    "(3) the key technical finding or relationship shown. "
+    "Read and report actual values from the image. "
+    "Do not give generic definitions or explain general concepts. "
+    "Be precise and concise."
 )
 
 
@@ -731,6 +736,195 @@ def _infer_heading_levels(doc: DoclingDocument) -> DoclingDocument:
     return doc
 
 
+# ── Test case restructuring ──────────────────────────────────────
+
+# Field labels that appear in test case blocks (longest first to avoid
+# partial matches during regex alternation).
+_TC_FIELD_LABELS: tuple[str, ...] = (
+    "Test carried out by",
+    "Verification object",
+    "Test verified by",
+    "Failure criteria",
+    "Test equipment",
+    "Description",
+    "Test case",
+    "Test Item",
+    "Reference",
+    "Comment",
+    "Result",
+    "Date",
+    "Test",
+)
+
+# Matches a test-case field label on its own line (with optional ``##``
+# prefix and optional trailing colon).
+_RE_TC_FIELD = re.compile(
+    r"^(?:##\s+)?("
+    + "|".join(re.escape(f) for f in _TC_FIELD_LABELS)
+    + r")[:\s]*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+# Start-of-block marker: "Test case:" on its own line.
+_RE_TC_START = re.compile(r"^Test case:\s*$", re.MULTILINE)
+
+# Numbered section heading (e.g. ``## 5 VERIFICATION``) — used to
+# detect block boundaries so that section headings between test case
+# blocks are not absorbed.
+_RE_SECTION_BREAK = re.compile(r"^#{1,3}\s+\d+(?:\.\d+)*\s+", re.MULTILINE)
+
+# Bracket-enclosed traceability / requirement IDs at the end of a block.
+_RE_BRACKET_IDS = re.compile(r"^\[([\w_./-]+)\](?:\[([\w_./-]+)\])*\s*$")
+
+
+def _extract_trailing_ids(value: str) -> tuple[str, list[str]]:
+    """Strip bracket-enclosed IDs from the tail of a field value.
+
+    Returns ``(cleaned_value, ids)`` where *ids* are the ``[ID]`` strings
+    found at the very end of *value*.
+    """
+    lines = value.rstrip().split("\n")
+    ids: list[str] = []
+
+    while lines:
+        last = lines[-1].strip()
+        if not last:
+            lines.pop()
+            continue
+        if _RE_BRACKET_IDS.match(last):
+            ids.insert(0, last)
+            lines.pop()
+        else:
+            break
+
+    return "\n".join(lines).rstrip(), ids
+
+
+def _format_single_test_block(block: str) -> str:
+    """Parse a raw test-case block and return a structured markdown block.
+
+    Returns the block wrapped in ``---`` horizontal-rule delimiters with
+    each field formatted as ``**Field:** value``.  Traceability and
+    requirement IDs are collected into a ``**Traceability:**`` line.
+    """
+    matches = list(_RE_TC_FIELD.finditer(block))
+    if not matches:
+        return block
+
+    # ---- extract field → value pairs ----
+    pairs: list[tuple[str, str]] = []
+    for i, m in enumerate(matches):
+        field_name = m.group(1).strip()
+        val_start = m.end()
+        val_end = matches[i + 1].start() if i + 1 < len(matches) else len(block)
+        raw = block[val_start:val_end].strip()
+        # Strip accidental heading markers on the value itself
+        if raw.startswith("## "):
+            raw = raw[3:].strip()
+        pairs.append((field_name, raw))
+
+    # ---- reject empty / malformed blocks ----
+    tc_value = ""
+    for name, value in pairs:
+        if name.lower() == "test case":
+            tc_value = value
+            break
+    if not tc_value:
+        return block  # empty template block — pass through unchanged
+
+    # ---- collect trailing IDs from the last field ----
+    all_ids: list[str] = []
+    cleaned_pairs: list[tuple[str, str]] = []
+    for idx, (name, value) in enumerate(pairs):
+        if idx == len(pairs) - 1:
+            value, ids = _extract_trailing_ids(value)
+            all_ids.extend(ids)
+        cleaned_pairs.append((name, value))
+
+    # Also pull IDs from any earlier field whose entire value is just IDs
+    final_pairs: list[tuple[str, str]] = []
+    for name, value in cleaned_pairs:
+        stripped = value.strip()
+        if stripped and all(
+            _RE_BRACKET_IDS.match(ln.strip())
+            for ln in stripped.split("\n")
+            if ln.strip()
+        ):
+            # Value is purely bracket IDs — absorb into traceability
+            for ln in stripped.split("\n"):
+                if ln.strip():
+                    all_ids.append(ln.strip())
+            final_pairs.append((name, ""))
+        else:
+            final_pairs.append((name, value))
+
+    # ---- build structured block ----
+    lines: list[str] = ["---", ""]
+
+    for name, value in final_pairs:
+        if not value:
+            continue
+        # Multi-line values: put first text line on the **Field:** line
+        if "\n" in value:
+            first_nl = value.index("\n")
+            first_line = value[:first_nl].strip()
+            rest = value[first_nl + 1:]
+            if first_line and not first_line.startswith("|") and not first_line.startswith("[VLM"):
+                lines.append(f"**{name}:** {first_line}")
+                if rest.strip():
+                    lines.append(rest.rstrip())
+            else:
+                lines.append(f"**{name}:**")
+                lines.append(value.rstrip())
+        else:
+            lines.append(f"**{name}:** {value}")
+
+    if all_ids:
+        lines.append(f"**Traceability:** {' '.join(all_ids)}")
+
+    lines.extend(["", "---", ""])
+    return "\n".join(lines)
+
+
+def _restructure_test_cases(md: str) -> str:
+    """Convert fragmented test-case blocks into chunking-friendly format.
+
+    Each test case becomes a self-contained block delimited by ``---``
+    horizontal rules, with ``**Field:** value`` pairs and a consolidated
+    ``**Traceability:**`` metadata line.
+    """
+    starts = [m.start() for m in _RE_TC_START.finditer(md)]
+    if not starts:
+        return md
+
+    parts: list[str] = []
+    prev_end = 0
+
+    for i, start in enumerate(starts):
+        # Preserve text before this block (section headings, prose, etc.)
+        parts.append(md[prev_end:start])
+
+        next_start = starts[i + 1] if i + 1 < len(starts) else len(md)
+        raw_block = md[start:next_start]
+
+        # Check for a numbered section heading inside the block —
+        # if found, the block ends there and the heading stays outside.
+        skip = raw_block.find("\n") + 1
+        sec_match = _RE_SECTION_BREAK.search(raw_block, pos=skip) if skip else None
+        if sec_match:
+            block = raw_block[: sec_match.start()]
+            prev_end = start + sec_match.start()
+        else:
+            block = raw_block
+            prev_end = next_start
+
+        parts.append(_format_single_test_block(block))
+
+    # Remaining text after the last test case block.
+    parts.append(md[prev_end:])
+    return "".join(parts)
+
+
 # ── Post-export Markdown cleanup ─────────────────────────────────
 
 # Regex patterns compiled once at module level.
@@ -739,7 +933,9 @@ _RE_TRAILING_WHITESPACE = re.compile(r"[ \t]+$", re.MULTILINE)
 _RE_PAGE_X_OF_Y = re.compile(
     r"^\s*page\s+\d+\s+of\s+\d+\s*$", re.IGNORECASE | re.MULTILINE
 )
-_RE_REPEATED_SEPARATORS = re.compile(r"(^[ \t]*[-=_]{3,}[ \t]*$\n?){2,}", re.MULTILINE)
+_RE_REPEATED_SEPARATORS = re.compile(
+    r"(^[ \t]*[-=_]{3,}[ \t]*$\s*){2,}", re.MULTILINE
+)
 
 # Build a regex that matches headings whose text is a known false-positive
 # (e.g. "## Passed", "## Not applicable").  These are test-report result
@@ -784,12 +980,14 @@ def _clean_markdown(md: str) -> str:
     2. Remove residual "Page X of Y" lines.
     3. Remove residual boilerplate blocks (classification banner + doc-ID table).
     4. Demote false-positive headings ("## Passed" → "Passed").
-    5. Collapse repeated separator lines (``---``, ``===``, ``___``).
-    6. Decode residual HTML entities (``&amp;`` → ``&``).
-    7. Strip HTML comment artifacts (``<!-- ... -->``).
-    8. Strip trailing whitespace from every line.
-    9. Collapse 3+ consecutive blank lines down to 2.
-    10. Strip leading / trailing whitespace from the whole document.
+    5. Restructure test-case blocks into ``**Field:** value`` format with
+       ``---`` delimiters and consolidated traceability metadata.
+    6. Collapse repeated separator lines (``---``, ``===``, ``___``).
+    7. Decode residual HTML entities (``&amp;`` → ``&``).
+    8. Strip HTML comment artifacts (``<!-- ... -->``).
+    9. Strip trailing whitespace from every line.
+    10. Collapse 3+ consecutive blank lines down to 2.
+    11. Strip leading / trailing whitespace from the whole document.
     """
     # 1. Strip front-matter address block
     md = _RE_FRONT_MATTER.sub("", md)
@@ -805,22 +1003,25 @@ def _clean_markdown(md: str) -> str:
         lambda m: m.group(0).lstrip("# ").strip(), md
     )
 
-    # 5. Collapse repeated separator lines into a single one
+    # 5. Restructure test-case blocks for chunking
+    md = _restructure_test_cases(md)
+
+    # 6. Collapse repeated separator lines into a single one
     md = _RE_REPEATED_SEPARATORS.sub("---\n", md)
 
-    # 6. Decode residual HTML entities
+    # 7. Decode residual HTML entities
     md = html_module.unescape(md)
 
-    # 7. Strip HTML comment artifacts
+    # 8. Strip HTML comment artifacts
     md = re.sub(r"<!--.*?-->", "", md, flags=re.DOTALL)
 
-    # 8. Strip trailing whitespace per line
+    # 9. Strip trailing whitespace per line
     md = _RE_TRAILING_WHITESPACE.sub("", md)
 
-    # 9. Collapse excessive blank lines
+    # 10. Collapse excessive blank lines
     md = _RE_EXCESSIVE_BLANKS.sub("\n\n", md)
 
-    # 10. Strip leading/trailing whitespace from the whole document
+    # 11. Strip leading/trailing whitespace from the whole document
     md = md.strip()
 
     return md
