@@ -965,6 +965,85 @@ def _format_single_test_block(block: str) -> str:
     return "\n".join(lines)
 
 
+def _merge_split_tables(md: str) -> str:
+    """Rejoin pipe-tables that Docling split across page boundaries.
+
+    When a table spans a page break, Docling often emits two separate
+    pipe-table blocks — sometimes with the header row re-emitted in the
+    second fragment.  This function detects adjacent table blocks
+    separated only by blank lines, verifies they have the same column
+    count, strips any duplicated header / separator from the second
+    fragment, and merges them into one continuous table.
+    """
+    _SEP_CELL = re.compile(r"^-+$")  # e.g. "---" inside a pipe cell
+
+    def _is_table_line(line: str) -> bool:
+        return line.startswith("|")
+
+    def _is_separator_line(line: str) -> bool:
+        """True if the row is a pipe-table separator (| --- | --- | …)."""
+        if not line.startswith("|"):
+            return False
+        cells = [c.strip() for c in line.split("|")[1:-1]]
+        return bool(cells) and all(_SEP_CELL.match(c) for c in cells if c)
+
+    def _col_count(line: str) -> int:
+        return line.count("|") - 1  # leading + trailing pipes
+
+    lines = md.split("\n")
+    # Build list of (start, end) index ranges for each table block.
+    blocks: list[tuple[int, int]] = []
+    i = 0
+    while i < len(lines):
+        if _is_table_line(lines[i]):
+            start = i
+            while i < len(lines) and _is_table_line(lines[i]):
+                i += 1
+            blocks.append((start, i))  # end is exclusive
+        else:
+            i += 1
+
+    if len(blocks) < 2:
+        return md
+
+    # Walk pairs in reverse so index mutations don't invalidate later
+    # pairs.
+    for idx in range(len(blocks) - 1, 0, -1):
+        prev_start, prev_end = blocks[idx - 1]
+        cur_start, cur_end = blocks[idx]
+
+        # Only merge if the gap between the two blocks is blank lines.
+        gap = lines[prev_end:cur_start]
+        if any(g.strip() for g in gap):
+            continue
+
+        # Column count must match (use first data row of each block).
+        prev_cols = _col_count(lines[prev_start])
+        cur_cols = _col_count(lines[cur_start])
+        if prev_cols != cur_cols:
+            continue
+
+        # Determine how many leading lines of the second block to strip
+        # (duplicated header row and/or separator line).
+        strip = 0
+        if _is_separator_line(lines[cur_start]):
+            # Second block starts with separator only — strip it.
+            strip = 1
+        elif (
+            cur_start + 1 < cur_end
+            and _is_separator_line(lines[cur_start + 1])
+        ):
+            # Second block starts with header + separator — strip both.
+            strip = 2
+
+        # Merge: replace gap + stripped header with nothing; keep data rows.
+        merged = lines[prev_end - 1 : prev_end]  # keep last row of table 1
+        merged += lines[cur_start + strip : cur_end]  # data rows of table 2
+        lines[prev_end - 1 : cur_end] = merged
+
+    return "\n".join(lines)
+
+
 def _restructure_test_cases(md: str) -> str:
     """Convert fragmented test-case blocks into chunking-friendly format.
 
@@ -1474,6 +1553,7 @@ def _clean_markdown(md: str) -> str:
     3d. Strip Thales copyright / reproduction notice.
     3e. Remove terminal / export boundary markers
         (``END OF DOCUMENT``, ``(Start/End Of Doors Export)``).
+    3f. Merge pipe-tables split across page boundaries.
     4. Demote false-positive headings ("## Passed" → "Passed").
     5. Condense DOORS-exported metadata blocks into inline tags.
     5b. Wrap DOORS requirement blocks in ``---`` delimiters for
@@ -1510,6 +1590,9 @@ def _clean_markdown(md: str) -> str:
 
     # 3e. Remove terminal / export boundary markers
     md = _RE_TERMINAL_MARKER.sub("", md)
+
+    # 3f. Merge pipe-tables split across page boundaries
+    md = _merge_split_tables(md)
 
     # 4. Demote false-positive headings to plain text
     md = _RE_FALSE_POSITIVE_HEADING.sub(
