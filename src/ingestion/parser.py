@@ -333,8 +333,8 @@ def _crop_picture_image(
 
         bbox = prov.bbox
         # Docling bbox: l, t, r, b in points (72 dpi).
-        # Page rendered at scale=3.0 → 216 dpi.
-        scale = 3.0
+        # Page rendered at scale=5.0 → 360 dpi.
+        scale = 5.0
         left = int(bbox.l * scale)
         top = int(bbox.t * scale)
         right = int(bbox.r * scale)
@@ -364,7 +364,7 @@ def _crop_picture_image(
 def _render_pdf_pages(
     pdf_path: Path,
     page_numbers: set[int],
-    scale: int = 3,
+    scale: int = 5,
 ) -> dict[int, Image.Image]:
     """Render specific PDF pages as PIL images using pypdfium2.
 
