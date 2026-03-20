@@ -1062,6 +1062,184 @@ _RE_FRONT_MATTER = re.compile(
 )
 
 
+# ── DOORS metadata condensation ──────────────────────────────────
+
+# DOORS export field labels in their expected order of appearance.
+_DOORS_FIELDS: tuple[str, ...] = (
+    "Category", "Allocation", "Priority", "Safety", "Verification",
+    "Comment", "No_Out-Links",
+)
+
+_DOORS_CORE_FIELDS: tuple[str, ...] = (
+    "Category", "Allocation", "Priority", "Safety", "Verification",
+)
+
+# Matches a DOORS field label at the start of a line.
+_RE_DOORS_FIELD = re.compile(
+    r"^(" + "|".join(re.escape(f) for f in _DOORS_FIELDS) + r"):\s*(.*?)\s*$"
+)
+
+# Template page header that can intrude mid-block.
+_RE_PROJECT_ACRONYM = re.compile(
+    r"^#{1,6}\s+PROJECT\s+ACRONYM\s+DOCUMENT\s+TITLE\s*$"
+)
+
+# Known DOORS verification method values.
+_DOORS_VERIFICATION_METHODS: frozenset[str] = frozenset({
+    "Analysis", "Test", "Inspection", "Demonstration",
+})
+
+
+def _condense_doors_metadata(md: str) -> str:
+    """Condense verbose DOORS-exported metadata blocks into inline tags.
+
+    DOORS exports produce a repeating block of metadata fields after every
+    requirement (Category, Allocation, Priority, Safety, Verification),
+    each on its own line separated by blank lines.  This function detects
+    those blocks and replaces each with a single bracketed inline tag::
+
+        [Category: Requirement | Allocation: HW | Priority: Mandatory
+         | Safety: Yes | Verification: Analysis]
+
+    Traceability IDs (e.g. ``[HWADD:TOP:0012]``) are preserved on a
+    separate line immediately after the tag.
+    """
+    lines = md.split("\n")
+    out: list[str] = []
+    i = 0
+    n = len(lines)
+    condensed = 0
+
+    while i < n:
+        # ── Detect block start: bare "Category:" line ───────────
+        cat_m = re.match(r"^Category:\s*(.*?)\s*$", lines[i])
+        if not cat_m:
+            out.append(lines[i])
+            i += 1
+            continue
+
+        block_start = i
+        fields: dict[str, str] = {}
+        trace_ids: list[str] = []
+        cur_field: str | None = "Category"
+        cur_val: str = cat_m.group(1)
+        i += 1
+
+        while i < n:
+            stripped = lines[i].strip()
+
+            # Skip blank lines within the block
+            if not stripped:
+                i += 1
+                continue
+
+            # Skip template page-header noise within the block
+            if _RE_PROJECT_ACRONYM.match(stripped):
+                i += 1
+                continue
+
+            # ── New DOORS field label ───────────────────────────
+            fm = _RE_DOORS_FIELD.match(stripped)
+            if fm:
+                if cur_field:
+                    fields[cur_field] = cur_val.strip()
+                new_name = fm.group(1)
+                rest = fm.group(2)
+
+                # Handle collapsed fields on one line, e.g.
+                # "Safety: Yes Verification: Analysis [ID]"
+                scanning = True
+                while scanning:
+                    scanning = False
+                    for cf in _DOORS_FIELDS:
+                        inner = re.search(
+                            r"\s+" + re.escape(cf) + r":\s*", rest,
+                        )
+                        if inner:
+                            fields[new_name] = rest[: inner.start()].strip()
+                            new_name = cf
+                            rest = rest[inner.end():]
+                            scanning = True
+                            break
+
+                # Pull inline bracket IDs from the remainder
+                for tid in re.findall(r"\[[\w_./:|-]+\]", rest):
+                    rest = rest.replace(tid, "", 1)
+                    trace_ids.append(tid)
+
+                cur_field = new_name
+                cur_val = rest.strip()
+                i += 1
+                continue
+
+            # ── Traceability ID line ────────────────────────────
+            if stripped.startswith("[") and re.match(
+                r"^\[[\w_./:|-]+\]", stripped,
+            ):
+                if cur_field:
+                    fields[cur_field] = cur_val.strip()
+                    cur_field = None
+                    cur_val = ""
+                for tid in re.findall(r"\[[\w_./:|-]+\]", stripped):
+                    trace_ids.append(tid)
+                i += 1
+                continue
+
+            # ── Value for the current (empty-value) field ───────
+            if cur_field and not cur_val:
+                cur_val = stripped
+                i += 1
+                continue
+
+            # ── Extra verification methods (Analysis, Test, …) ──
+            if cur_field == "Verification" and cur_val:
+                if stripped in _DOORS_VERIFICATION_METHODS:
+                    cur_val += ", " + stripped
+                    i += 1
+                    continue
+                if stripped == "NA":
+                    i += 1   # trailing noise (Coverage_ID / No_Out-Links)
+                    continue
+
+            # ── Trailing bare "NA" after all fields collected ───
+            if cur_field is None and stripped == "NA":
+                i += 1
+                continue
+
+            # ── Block boundary — stop collecting ────────────────
+            break
+
+        # Save last field
+        if cur_field:
+            fields[cur_field] = cur_val.strip()
+
+        # Validate: need >= 3 core fields for a real DOORS block
+        core_count = sum(1 for f in _DOORS_CORE_FIELDS if fields.get(f))
+        if core_count >= 3:
+            parts = [
+                f"{f}: {fields[f]}"
+                for f in _DOORS_CORE_FIELDS
+                if fields.get(f)
+            ]
+            for f in ("Comment", "No_Out-Links"):
+                v = fields.get(f, "").strip()
+                if v and v.upper() != "NA":
+                    parts.append(f"{f}: {v}")
+            out.append("[" + " | ".join(parts) + "]")
+            if trace_ids:
+                out.append(" ".join(trace_ids))
+            out.append("")  # blank line separator after the condensed tag
+            condensed += 1
+        else:
+            # Not a valid DOORS block — emit original lines unchanged
+            out.extend(lines[block_start:i])
+
+    if condensed:
+        logger.info("Condensed %d DOORS metadata block(s).", condensed)
+
+    return "\n".join(out)
+
+
 def _clean_markdown(md: str) -> str:
     """Post-process a raw Markdown string for chunking quality.
 
@@ -1071,14 +1249,15 @@ def _clean_markdown(md: str) -> str:
     2. Remove residual "Page X of Y" lines.
     3. Remove residual boilerplate blocks (classification banner + doc-ID table).
     4. Demote false-positive headings ("## Passed" → "Passed").
-    5. Restructure test-case blocks into ``**Field:** value`` format with
+    5. Condense DOORS-exported metadata blocks into inline tags.
+    6. Restructure test-case blocks into ``**Field:** value`` format with
        ``---`` delimiters and consolidated traceability metadata.
-    6. Collapse repeated separator lines (``---``, ``===``, ``___``).
-    7. Decode residual HTML entities (``&amp;`` → ``&``).
-    8. Strip HTML comment artifacts (``<!-- ... -->``).
-    9. Strip trailing whitespace from every line.
-    10. Collapse 3+ consecutive blank lines down to 2.
-    11. Strip leading / trailing whitespace from the whole document.
+    7. Collapse repeated separator lines (``---``, ``===``, ``___``).
+    8. Decode residual HTML entities (``&amp;`` → ``&``).
+    9. Strip HTML comment artifacts (``<!-- ... -->``).
+    10. Strip trailing whitespace from every line.
+    11. Collapse 3+ consecutive blank lines down to 2.
+    12. Strip leading / trailing whitespace from the whole document.
     """
     # 1. Strip front-matter address block
     md = _RE_FRONT_MATTER.sub("", md)
@@ -1097,25 +1276,28 @@ def _clean_markdown(md: str) -> str:
         lambda m: m.group(0).lstrip("# ").strip(), md
     )
 
-    # 5. Restructure test-case blocks for chunking
+    # 5. Condense DOORS-exported metadata blocks into inline tags
+    md = _condense_doors_metadata(md)
+
+    # 6. Restructure test-case blocks for chunking
     md = _restructure_test_cases(md)
 
-    # 6. Collapse repeated separator lines into a single one
+    # 7. Collapse repeated separator lines into a single one
     md = _RE_REPEATED_SEPARATORS.sub("---\n", md)
 
-    # 7. Decode residual HTML entities
+    # 8. Decode residual HTML entities
     md = html_module.unescape(md)
 
-    # 8. Strip HTML comment artifacts
+    # 9. Strip HTML comment artifacts
     md = re.sub(r"<!--.*?-->", "", md, flags=re.DOTALL)
 
-    # 9. Strip trailing whitespace per line
+    # 10. Strip trailing whitespace per line
     md = _RE_TRAILING_WHITESPACE.sub("", md)
 
-    # 10. Collapse excessive blank lines
+    # 11. Collapse excessive blank lines
     md = _RE_EXCESSIVE_BLANKS.sub("\n\n", md)
 
-    # 11. Strip leading/trailing whitespace from the whole document
+    # 12. Strip leading/trailing whitespace from the whole document
     md = md.strip()
 
     return md
