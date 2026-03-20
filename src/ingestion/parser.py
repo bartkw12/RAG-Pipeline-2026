@@ -803,6 +803,76 @@ def _extract_trailing_ids(value: str) -> tuple[str, list[str]]:
     return "\n".join(lines).rstrip(), ids
 
 
+def _try_fix_displaced_values(
+    pairs: list[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    """Detect and fix the 'displaced value' pattern in test-case blocks.
+
+    When Docling's layout model misaligns field labels with their values,
+    the result is a run of empty fields followed by a "donor" field whose
+    value contains all the displaced values as consecutive paragraphs.
+    This function detects that pattern and redistributes the paragraphs
+    back to the correct fields.
+    """
+    if len(pairs) < 3:
+        return pairs
+
+    # Count consecutive empty fields from the start.
+    empty_run = 0
+    for _, value in pairs:
+        if value.strip():
+            break
+        empty_run += 1
+
+    if empty_run < 2 or empty_run >= len(pairs):
+        return pairs  # not the displaced-value pattern
+
+    # First non-empty field is the "donor" whose value absorbed everything.
+    donor_idx = empty_run
+    donor_value = pairs[donor_idx][1].strip()
+    if not donor_value:
+        return pairs
+
+    # Split donor value into paragraphs (blank-line separated).
+    paragraphs = [
+        p.strip()
+        for p in re.split(r"\n\s*\n", donor_value)
+        if p.strip()
+    ]
+    if len(paragraphs) <= 1:
+        return pairs
+
+    # Skip leading paragraphs that are not real field values:
+    # orphaned bracket IDs from adjacent blocks and leaked table rows.
+    skip = 0
+    for p in paragraphs:
+        if _RE_BRACKET_IDS.match(p) or p.lstrip().startswith("|"):
+            skip += 1
+        else:
+            break
+
+    usable = paragraphs[skip:]
+    if len(usable) < 2:
+        return pairs  # too little content to redistribute
+
+    # Redistribute: fill as many empty fields as we have paragraphs for,
+    # keeping at least one paragraph for the donor field.
+    fill_count = min(empty_run, len(usable) - 1)
+    new_pairs = list(pairs)
+    for i in range(fill_count):
+        val = usable[i]
+        # Strip accidental heading markers from displaced values.
+        if val.startswith("## "):
+            val = val[3:].strip()
+        new_pairs[i] = (pairs[i][0], val)
+
+    # Remaining usable paragraphs stay with the donor field.
+    remaining = usable[fill_count:]
+    new_pairs[donor_idx] = (pairs[donor_idx][0], "\n\n".join(remaining))
+
+    return new_pairs
+
+
 def _format_single_test_block(block: str) -> str:
     """Parse a raw test-case block and return a structured markdown block.
 
@@ -825,6 +895,9 @@ def _format_single_test_block(block: str) -> str:
         if raw.startswith("## "):
             raw = raw[3:].strip()
         pairs.append((field_name, raw))
+
+    # ---- try to fix displaced values ----
+    pairs = _try_fix_displaced_values(pairs)
 
     # ---- reject empty / malformed blocks ----
     tc_value = ""
