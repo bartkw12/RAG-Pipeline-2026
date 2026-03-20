@@ -1053,6 +1053,13 @@ _RE_THALES_COPYRIGHT = re.compile(
     re.MULTILINE,
 )
 
+# Terminal / export boundary markers: "## END OF DOCUMENT", bare
+# "END OF DOCUMENT", "(Start Of Doors Export)", "(End Of Doors Export)".
+_RE_TERMINAL_MARKER = re.compile(
+    r"^(?:#{1,6}\s+)?(?:END\s+OF\s+DOCUMENT|\((?:Start|End)\s+Of\s+Doors\s+Export\))\s*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+
 # Thales-template page header that appears on every page of DOORS-exported
 # documents: "## PROJECT ACRONYM DOCUMENT TITLE".
 _RE_PROJECT_ACRONYM_HEADING = re.compile(
@@ -1465,6 +1472,8 @@ def _clean_markdown(md: str) -> str:
     3c. Rejoin words broken by PDF line-wrap hyphenation
         (``daugh- terboard`` → ``daughterboard``).
     3d. Strip Thales copyright / reproduction notice.
+    3e. Remove terminal / export boundary markers
+        (``END OF DOCUMENT``, ``(Start/End Of Doors Export)``).
     4. Demote false-positive headings ("## Passed" → "Passed").
     5. Condense DOORS-exported metadata blocks into inline tags.
     5b. Wrap DOORS requirement blocks in ``---`` delimiters for
@@ -1498,6 +1507,9 @@ def _clean_markdown(md: str) -> str:
 
     # 3d. Strip Thales copyright / reproduction notice
     md = _RE_THALES_COPYRIGHT.sub("", md)
+
+    # 3e. Remove terminal / export boundary markers
+    md = _RE_TERMINAL_MARKER.sub("", md)
 
     # 4. Demote false-positive headings to plain text
     md = _RE_FALSE_POSITIVE_HEADING.sub(
