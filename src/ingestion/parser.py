@@ -1240,6 +1240,196 @@ def _condense_doors_metadata(md: str) -> str:
     return "\n".join(out)
 
 
+# Regex matching DOORS requirement / object IDs on their own line.
+# Examples: "HW-IRS_DIM_VI_275", "TOP_SRS_1500".
+_RE_DOORS_REQ_ID = re.compile(r"^(?:#{1,6}\s+)?([A-Z][A-Z0-9]*[-_][\w-]*_\d+)\s*$")
+
+# Matches lines consisting entirely of bracketed traceability IDs.
+_RE_TRACE_IDS_LINE = re.compile(r"^(?:\[[\w_./:|-]+\]\s*)+$")
+
+
+def _restructure_doors_requirements(md: str) -> str:
+    """Wrap DOORS requirement blocks in ``---`` delimiters for atomic chunking.
+
+    After ``_condense_doors_metadata()`` has collapsed verbose metadata
+    into ``[Category: ...]`` inline tags, this function identifies each
+    complete requirement block (ID + text + metadata + traceability IDs)
+    and wraps it in horizontal-rule delimiters so the chunker treats each
+    requirement as a self-contained unit.
+    """
+    # Quick exit: only process documents that contain condensed DOORS tags.
+    if "[Category:" not in md:
+        return md
+
+    lines = md.split("\n")
+    n = len(lines)
+
+    # ── Pass 1: locate all [Category: ...] tag lines ────────────────
+    tag_indices: list[int] = []
+    for idx, line in enumerate(lines):
+        s = line.strip()
+        if s.startswith("[Category:") and s.endswith("]"):
+            tag_indices.append(idx)
+
+    if not tag_indices:
+        return md
+
+    # ── Pass 2: determine block boundaries for each tag ─────────
+    blocks: list[tuple[int, int]] = []  # (start, end) inclusive
+
+    for tag_idx in tag_indices:
+        # ── Forward: collect trailing traceability ID lines ─────
+        end = tag_idx
+        j = tag_idx + 1
+        while j < n:
+            s = lines[j].strip()
+            if not s:
+                j += 1
+                continue
+            if (
+                s.startswith("[")
+                and not s.startswith("[Category:")
+                and _RE_TRACE_IDS_LINE.match(s)
+            ):
+                end = j
+                j += 1
+                continue
+            break
+
+        # ── Backward: find block start (text, then req IDs) ──────
+        start = tag_idx
+        j = tag_idx - 1
+        phase = "text"  # first collect text lines, then req IDs
+
+        while j >= 0:
+            s = lines[j].strip()
+
+            if not s:
+                j -= 1
+                continue
+
+            # Hard boundaries: never cross these
+            if (
+                s.startswith("|")           # table row
+                or s == "---"               # previous block delimiter
+                or (s.startswith("[Category:") and s.endswith("]"))
+                or _RE_TRACE_IDS_LINE.match(s)
+            ):
+                break
+
+            # Section heading: don't absorb into the block
+            if re.match(r"^#{1,6}\s+", s) and not _RE_DOORS_REQ_ID.match(s):
+                break
+
+            if phase == "text":
+                if _RE_DOORS_REQ_ID.match(s):
+                    phase = "req_ids"
+                    start = j
+                    j -= 1
+                    continue
+                # Regular text line — include in block
+                start = j
+                j -= 1
+                continue
+
+            # phase == "req_ids": collect consecutive DOORS IDs
+            if _RE_DOORS_REQ_ID.match(s):
+                start = j
+                j -= 1
+                continue
+            # Non-ID line after IDs → block boundary
+            break
+
+        # Safety: don't overlap with previous block
+        if blocks:
+            start = max(start, blocks[-1][1] + 1)
+
+        blocks.append((start, end))
+
+    # ── Pass 3: rebuild Markdown with structured blocks ──────────
+    out: list[str] = []
+    prev_end = -1
+
+    for start, end in blocks:
+        # Emit unprocessed lines before this block
+        for k in range(prev_end + 1, start):
+            out.append(lines[k])
+
+        # Find [Category:] tag within the block
+        tag_offset: int | None = None
+        for k in range(start, end + 1):
+            s = lines[k].strip()
+            if s.startswith("[Category:") and s.endswith("]"):
+                tag_offset = k
+                break
+
+        if tag_offset is None:
+            out.extend(lines[start : end + 1])
+            prev_end = end
+            continue
+
+        # ── Extract components ─────────────────────────────────
+        req_ids: list[str] = []
+        text_lines: list[str] = []
+
+        for k in range(start, tag_offset):
+            s = lines[k].strip()
+            if not s:
+                if text_lines:
+                    text_lines.append(lines[k])
+                continue
+            m = _RE_DOORS_REQ_ID.match(s)
+            if m and not text_lines:
+                req_ids.append(m.group(1))  # strip any leading ## prefix
+            else:
+                text_lines.append(lines[k])
+
+        # Trim trailing blank lines from text
+        while text_lines and not text_lines[-1].strip():
+            text_lines.pop()
+
+        tag_line = lines[tag_offset].strip()
+
+        # Traceability IDs after the tag
+        trace_parts: list[str] = []
+        for k in range(tag_offset + 1, end + 1):
+            s = lines[k].strip()
+            if s:
+                trace_parts.append(s)
+
+        # ── Emit structured block ───────────────────────────────
+        out.append("")
+        out.append("---")
+        out.append("")
+        for rid in req_ids:
+            out.append(f"**{rid}**")
+        if req_ids:
+            out.append("")
+        for tl in text_lines:
+            out.append(tl)
+        if text_lines:
+            out.append("")
+        out.append(tag_line)
+        if trace_parts:
+            out.append("**Traceability:** " + " ".join(trace_parts))
+        out.append("")
+        out.append("---")
+        out.append("")
+
+        prev_end = end
+
+    # Emit remaining lines after the last block
+    for k in range(prev_end + 1, n):
+        out.append(lines[k])
+
+    logger.info(
+        "Structured %d DOORS requirement block(s) with delimiters.",
+        len(blocks),
+    )
+
+    return "\n".join(out)
+
+
 def _clean_markdown(md: str) -> str:
     """Post-process a raw Markdown string for chunking quality.
 
@@ -1250,6 +1440,8 @@ def _clean_markdown(md: str) -> str:
     3. Remove residual boilerplate blocks (classification banner + doc-ID table).
     4. Demote false-positive headings ("## Passed" → "Passed").
     5. Condense DOORS-exported metadata blocks into inline tags.
+    5b. Wrap DOORS requirement blocks in ``---`` delimiters for
+        atomic chunking.
     6. Restructure test-case blocks into ``**Field:** value`` format with
        ``---`` delimiters and consolidated traceability metadata.
     7. Collapse repeated separator lines (``---``, ``===``, ``___``).
@@ -1278,6 +1470,9 @@ def _clean_markdown(md: str) -> str:
 
     # 5. Condense DOORS-exported metadata blocks into inline tags
     md = _condense_doors_metadata(md)
+
+    # 5b. Wrap DOORS requirement blocks in --- delimiters
+    md = _restructure_doors_requirements(md)
 
     # 6. Restructure test-case blocks for chunking
     md = _restructure_test_cases(md)
