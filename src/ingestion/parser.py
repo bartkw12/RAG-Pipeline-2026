@@ -145,6 +145,18 @@ _VLM_SYSTEM_PROMPT = (
     "Be precise and concise."
 )
 
+# Quality-gate regex for VLM descriptions that add no engineering value.
+# Matches responses about barcodes, missing/unreadable content, or
+# explicit "cannot be determined" disclaimers.
+_RE_VLM_LOW_QUALITY = re.compile(
+    r"barcode image|"
+    r"cannot be determined from this image|"
+    r"no (?:visible )?"
+    r"(?:engineering measurements|numerical (?:values|data)|"
+    r"axes|axis labels|labeled parameters|data points)",
+    re.IGNORECASE,
+)
+
 
 def _build_converter(config: ParserConfig) -> DocumentConverter:
     """Construct a Docling ``DocumentConverter`` configured per *config*.
@@ -470,6 +482,17 @@ def _describe_pictures(
 
         logger.info("Requesting VLM description for %s ...", fig_label)
         description = _call_azure_vlm(image_bytes, prompt, config)
+
+        if description:
+            # Quality gate: discard descriptions that convey no useful
+            # engineering content (barcode misdetections, "cannot be
+            # determined", etc.).
+            if _RE_VLM_LOW_QUALITY.search(description):
+                logger.info(
+                    "VLM description for %s failed quality gate — discarding.",
+                    fig_label,
+                )
+                description = None
 
         if description:
             short_cap = _caption_without_prefix(caption) if caption else ""
