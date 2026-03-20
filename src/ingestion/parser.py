@@ -1040,6 +1040,13 @@ _RE_FALSE_POSITIVE_HEADING = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# Thales-template page header that appears on every page of DOORS-exported
+# documents: "## PROJECT ACRONYM DOCUMENT TITLE".
+_RE_PROJECT_ACRONYM_HEADING = re.compile(
+    r"^#{1,6}\s+PROJECT\s+ACRONYM\s+DOCUMENT\s+TITLE\s*$",
+    re.MULTILINE,
+)
+
 # Safety-net regex: catches any residual boilerplate blocks that survived
 # the pre-export filter.  Matches a classification banner heading followed
 # by a document-ID table (with pipe-delimited rows and separator line).
@@ -1441,6 +1448,7 @@ def _clean_markdown(md: str) -> str:
     1. Strip front-matter address block (company name, phone, fax, URL).
     2. Remove residual "Page X of Y" lines.
     3. Remove residual boilerplate blocks (classification banner + doc-ID table).
+    3b. Strip ``## PROJECT ACRONYM DOCUMENT TITLE`` page-header noise.
     4. Demote false-positive headings ("## Passed" → "Passed").
     5. Condense DOORS-exported metadata blocks into inline tags.
     5b. Wrap DOORS requirement blocks in ``---`` delimiters for
@@ -1465,6 +1473,9 @@ def _clean_markdown(md: str) -> str:
 
     # 3. Remove residual boilerplate blocks
     md = _RE_RESIDUAL_BOILERPLATE.sub("", md)
+
+    # 3b. Strip "## PROJECT ACRONYM DOCUMENT TITLE" page-header noise
+    md = _RE_PROJECT_ACRONYM_HEADING.sub("", md)
 
     # 4. Demote false-positive headings to plain text
     md = _RE_FALSE_POSITIVE_HEADING.sub(
