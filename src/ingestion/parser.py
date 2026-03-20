@@ -131,13 +131,16 @@ class ParsedDocument:
 _VLM_SYSTEM_PROMPT = (
     "You are analyzing a figure from a technical engineering document. "
     "In 2-4 sentences, state: (1) what type of figure this is "
-    "(e.g., oscilloscope capture, block diagram, flowchart, schematic, "
-    "test setup photo, timing diagram, plot/graph); "
+    "(e.g., circuit schematic, block diagram, architecture diagram, "
+    "oscilloscope capture, flowchart, reference drawing, test setup "
+    "photo, timing diagram, plot/graph, pin-out diagram, wiring diagram); "
     "(2) the specific measurements, values, labels, or parameters "
-    "visible in the image (e.g., voltage levels, frequencies, time/div, "
-    "axis values, signal names, component IDs, decision nodes); "
+    "visible in the image (e.g., component IDs and values, signal names, "
+    "voltage levels, pin labels, connector references, thresholds, "
+    "frequencies, axis values, decision nodes, module names); "
     "(3) the key technical finding or relationship shown. "
-    "Read and report actual values from the image. "
+    "Read and report actual values, component designators, and labels "
+    "from the image. "
     "Do not give generic definitions or explain general concepts. "
     "Be precise and concise."
 )
@@ -432,11 +435,7 @@ def _describe_pictures(
         fig_counter += 1
 
         caption = _get_caption_text(doc, item)
-        if not caption:
-            logger.debug("Skipping picture %d — no caption.", fig_counter)
-            continue
-
-        fig_num = _extract_figure_number(caption)
+        fig_num = _extract_figure_number(caption) if caption else None
         fig_label = f"Figure {fig_num}" if fig_num else f"Figure {fig_counter}"
 
         if item.prov:
@@ -649,7 +648,11 @@ def _filter_document_elements(
                 items_to_delete.append(item)
                 continue
 
-            # No description — strip picture entirely.
+            # No VLM description — insert a placeholder so the
+            # chunker knows a figure existed at this position.
+            vlm_inserts.append(
+                (item, "[Figure — see source document]")
+            )
             items_to_delete.append(item)
             continue
 
