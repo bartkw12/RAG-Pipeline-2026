@@ -1125,6 +1125,13 @@ _RE_FALSE_POSITIVE_HEADING = re.compile(
 # "HW- IRS_DIM_448" or compound proper nouns like "Documentation- Plan".
 _RE_HYPHENATION_ARTIFACT = re.compile(r"([a-z])- ([a-z])")
 
+# Table captions promoted to headings by Docling's layout model:
+# "## Table 2: Additional references" → "Table 2: Additional references".
+_RE_TABLE_HEADING = re.compile(
+    r"^#{1,6}\s+(Table\s+\d+\s*:.*)$",
+    re.MULTILINE,
+)
+
 # Thales copyright / reproduction notice that appears on cover pages and
 # occasionally mid-document as a running footer.
 _RE_THALES_COPYRIGHT = re.compile(
@@ -1555,6 +1562,7 @@ def _clean_markdown(md: str) -> str:
         (``END OF DOCUMENT``, ``(Start/End Of Doors Export)``).
     3f. Merge pipe-tables split across page boundaries.
     4. Demote false-positive headings ("## Passed" → "Passed").
+    4b. Demote ``## Table N: ...`` captions to plain text.
     5. Condense DOORS-exported metadata blocks into inline tags.
     5b. Wrap DOORS requirement blocks in ``---`` delimiters for
         atomic chunking.
@@ -1598,6 +1606,9 @@ def _clean_markdown(md: str) -> str:
     md = _RE_FALSE_POSITIVE_HEADING.sub(
         lambda m: m.group(0).lstrip("# ").strip(), md
     )
+
+    # 4b. Demote "## Table N: ..." captions to plain text
+    md = _RE_TABLE_HEADING.sub(r"\1", md)
 
     # 5. Condense DOORS-exported metadata blocks into inline tags
     md = _condense_doors_metadata(md)
