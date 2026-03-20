@@ -1040,6 +1040,12 @@ _RE_FALSE_POSITIVE_HEADING = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# PDF line-wrap hyphenation artifact: a lowercase letter followed by a hyphen,
+# a single space, then a lowercase continuation ("daugh- terboard" → "daughterboard").
+# Only fires when BOTH sides are lowercase to avoid breaking identifiers like
+# "HW- IRS_DIM_448" or compound proper nouns like "Documentation- Plan".
+_RE_HYPHENATION_ARTIFACT = re.compile(r"([a-z])- ([a-z])")
+
 # Thales-template page header that appears on every page of DOORS-exported
 # documents: "## PROJECT ACRONYM DOCUMENT TITLE".
 _RE_PROJECT_ACRONYM_HEADING = re.compile(
@@ -1449,6 +1455,8 @@ def _clean_markdown(md: str) -> str:
     2. Remove residual "Page X of Y" lines.
     3. Remove residual boilerplate blocks (classification banner + doc-ID table).
     3b. Strip ``## PROJECT ACRONYM DOCUMENT TITLE`` page-header noise.
+    3c. Rejoin words broken by PDF line-wrap hyphenation
+        (``daugh- terboard`` → ``daughterboard``).
     4. Demote false-positive headings ("## Passed" → "Passed").
     5. Condense DOORS-exported metadata blocks into inline tags.
     5b. Wrap DOORS requirement blocks in ``---`` delimiters for
@@ -1476,6 +1484,9 @@ def _clean_markdown(md: str) -> str:
 
     # 3b. Strip "## PROJECT ACRONYM DOCUMENT TITLE" page-header noise
     md = _RE_PROJECT_ACRONYM_HEADING.sub("", md)
+
+    # 3c. Rejoin words broken by PDF line-wrap hyphenation
+    md = _RE_HYPHENATION_ARTIFACT.sub(r"\1\2", md)
 
     # 4. Demote false-positive headings to plain text
     md = _RE_FALSE_POSITIVE_HEADING.sub(
