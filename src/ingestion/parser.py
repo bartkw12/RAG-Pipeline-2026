@@ -1132,6 +1132,13 @@ _RE_TABLE_HEADING = re.compile(
     re.MULTILINE,
 )
 
+# Leaked tester-name prefix in result fields:
+# "**Result:** I. Shuryghin passed" → "**Result:** passed".
+_RE_RESULT_FIELD_NOISE = re.compile(
+    r"^(\*\*Result:\*\*\s+).+(passed|failed|not applicable)\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
 # Thales copyright / reproduction notice that appears on cover pages and
 # occasionally mid-document as a running footer.
 _RE_THALES_COPYRIGHT = re.compile(
@@ -1568,6 +1575,7 @@ def _clean_markdown(md: str) -> str:
         atomic chunking.
     6. Restructure test-case blocks into ``**Field:** value`` format with
        ``---`` delimiters and consolidated traceability metadata.
+    6b. Fix leaked tester names in ``**Result:**`` fields.
     7. Collapse repeated separator lines (``---``, ``===``, ``___``).
     8. Decode residual HTML entities (``&amp;`` → ``&``).
     9. Strip HTML comment artifacts (``<!-- ... -->``).
@@ -1618,6 +1626,9 @@ def _clean_markdown(md: str) -> str:
 
     # 6. Restructure test-case blocks for chunking
     md = _restructure_test_cases(md)
+
+    # 6b. Fix leaked tester names in Result fields
+    md = _RE_RESULT_FIELD_NOISE.sub(r"\1\2", md)
 
     # 7. Collapse repeated separator lines into a single one
     md = _RE_REPEATED_SEPARATORS.sub("---\n", md)
