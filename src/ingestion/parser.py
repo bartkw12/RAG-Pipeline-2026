@@ -1046,6 +1046,13 @@ _RE_FALSE_POSITIVE_HEADING = re.compile(
 # "HW- IRS_DIM_448" or compound proper nouns like "Documentation- Plan".
 _RE_HYPHENATION_ARTIFACT = re.compile(r"([a-z])- ([a-z])")
 
+# Thales copyright / reproduction notice that appears on cover pages and
+# occasionally mid-document as a running footer.
+_RE_THALES_COPYRIGHT = re.compile(
+    r"^This document is not to be reproduced.*?\u00a9\s*THALES\s+\d{4}\s*-\s*All\s+rights\s+reserved\.\s*$",
+    re.MULTILINE,
+)
+
 # Thales-template page header that appears on every page of DOORS-exported
 # documents: "## PROJECT ACRONYM DOCUMENT TITLE".
 _RE_PROJECT_ACRONYM_HEADING = re.compile(
@@ -1457,6 +1464,7 @@ def _clean_markdown(md: str) -> str:
     3b. Strip ``## PROJECT ACRONYM DOCUMENT TITLE`` page-header noise.
     3c. Rejoin words broken by PDF line-wrap hyphenation
         (``daugh- terboard`` → ``daughterboard``).
+    3d. Strip Thales copyright / reproduction notice.
     4. Demote false-positive headings ("## Passed" → "Passed").
     5. Condense DOORS-exported metadata blocks into inline tags.
     5b. Wrap DOORS requirement blocks in ``---`` delimiters for
@@ -1487,6 +1495,9 @@ def _clean_markdown(md: str) -> str:
 
     # 3c. Rejoin words broken by PDF line-wrap hyphenation
     md = _RE_HYPHENATION_ARTIFACT.sub(r"\1\2", md)
+
+    # 3d. Strip Thales copyright / reproduction notice
+    md = _RE_THALES_COPYRIGHT.sub("", md)
 
     # 4. Demote false-positive headings to plain text
     md = _RE_FALSE_POSITIVE_HEADING.sub(
