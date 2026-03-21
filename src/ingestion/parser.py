@@ -146,10 +146,12 @@ _VLM_SYSTEM_PROMPT = (
 )
 
 # Quality-gate regex for VLM descriptions that add no engineering value.
-# Matches responses about barcodes, missing/unreadable content, or
-# explicit "cannot be determined" disclaimers.
+# Matches responses about barcodes, blank/empty images,
+# missing/unreadable content, or "cannot be determined" disclaimers.
 _RE_VLM_LOW_QUALITY = re.compile(
     r"barcode image|"
+    r"(?:image|figure) (?:is |appears (?:to be )?)(?:completely )?blank|"
+    r"completely blank and (?:contains|does) no|"
     r"cannot be determined from this image|"
     r"no (?:visible )?"
     r"(?:engineering measurements|numerical (?:values|data)|"
