@@ -181,9 +181,9 @@ def run(
         logger.warning("No files to ingest.")
         return summary
 
-    # Build a shared converter once (avoids reloading models per file)
+    # Build a fresh converter per document to avoid cumulative memory
+    # exhaustion (Docling's C++ layout engine leaks across runs).
     cfg = parser_config or ParserConfig()
-    converter = _build_converter(cfg)
 
     # Log selection info
     logger.info(
@@ -248,7 +248,8 @@ def run(
                 summary.re_ingested += 1
             continue
 
-        # Parse the document
+        # Parse the document (fresh converter per file to avoid OOM)
+        converter = _build_converter(cfg)
         parsed = parse_document(
             path,
             doc_id=check.doc_id,
