@@ -244,3 +244,37 @@ class ChunkedDocument:
     doc_id: str
     doc_metadata: DocumentMeta = field(default_factory=DocumentMeta)
     chunks: list[Chunk] = field(default_factory=list)
+
+    # ── Convenience accessors ───────────────────────────────────
+
+    @property
+    def document_chunk(self) -> Chunk | None:
+        """Return the single Tier 1 (document) chunk, if present."""
+        for c in self.chunks:
+            if c.tier == ChunkTier.DOCUMENT:
+                return c
+        return None
+
+    @property
+    def section_chunks(self) -> list[Chunk]:
+        """Return all Tier 2 (section) chunks."""
+        return [c for c in self.chunks if c.tier == ChunkTier.SECTION]
+
+    @property
+    def atomic_chunks(self) -> list[Chunk]:
+        """Return all Tier 3 (atomic / leaf) chunks."""
+        return [c for c in self.chunks if c.tier == ChunkTier.ATOMIC]
+
+    def get_chunk(self, chunk_id: str) -> Chunk | None:
+        """Look up a chunk by its ID."""
+        for c in self.chunks:
+            if c.chunk_id == chunk_id:
+                return c
+        return None
+
+    def get_children(self, chunk_id: str) -> list[Chunk]:
+        """Return the direct children of the given chunk."""
+        parent = self.get_chunk(chunk_id)
+        if parent is None:
+            return []
+        return [c for c in self.chunks if c.chunk_id in parent.children_ids]
