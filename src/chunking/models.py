@@ -63,3 +63,25 @@ class ChunkMetadata:
     """Ordered list of heading texts from root to the chunk's
     nearest enclosing section, e.g.
     ``["1 INTRODUCTION", "1.5 REFERENCES", "1.5.2 Additional references"]``."""
+
+    section_number: str | None = None
+    """Extracted numeric section identifier (e.g. ``"1.5.2"``)."""
+
+    heading: str | None = None
+    """Text of the nearest enclosing heading."""
+
+    has_table: bool = False
+    """True if the chunk text contains a Markdown pipe-table."""
+
+    has_figure: bool = False
+    """True if the chunk text contains a figure reference or VLM description."""
+
+    cross_references: list[str] = field(default_factory=list)
+    """Bracket-style document references found in the text,
+    e.g. ``["HWADD:TOP:0012", "CD_PAM"]``."""
+
+    component_ids: list[str] = field(default_factory=list)
+    """Thales item numbers found in the text,
+    e.g. ``["7HA-02944-AAAA"]``."""
+
+
