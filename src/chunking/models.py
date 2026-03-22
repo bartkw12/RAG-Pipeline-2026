@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
 
 
 # ── Enumerations ────────────────────────────────────────────────
@@ -228,7 +227,7 @@ class Chunk:
     token_count: int = 0
     parent_id: str | None = None
     children_ids: list[str] = field(default_factory=list)
-    metadata: ChunkMetadata = field(default_factory=ChunkMetadata)\
+    metadata: ChunkMetadata = field(default_factory=ChunkMetadata)
 
 
 # ── Chunked document (top-level container) ──────────────────────
