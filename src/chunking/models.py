@@ -15,3 +15,30 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
+
+# ── Enumerations ────────────────────────────────────────────────
+
+
+class ChunkType(str, Enum):
+    """Semantic type of a chunk's content."""
+
+    DOCUMENT_META = "document_meta"
+    FRONT_MATTER = "front_matter"
+    SECTION = "section"
+    TEST_CASE = "test_case"
+    REQUIREMENT = "requirement"
+    TABLE = "table"
+    DEFINITION_TABLE = "definition_table"
+    ABBREVIATION_TABLE = "abbreviation_table"
+    PROSE = "prose"
+    FIGURE = "figure"
+    LIST = "list"
+
+
+class ChunkTier(int, Enum):
+    """Hierarchy level within the three-tier chunk model."""
+
+    DOCUMENT = 1
+    SECTION = 2
+    ATOMIC = 3
