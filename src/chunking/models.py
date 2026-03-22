@@ -108,3 +108,14 @@ class ChunkMetadata:
 
     failure_criteria: str | None = None
     """Stated failure criteria for the test."""
+
+    # ── Shared traceability (TEST_CASE and REQUIREMENT) ─────────
+    traceability_ids: list[str] = field(default_factory=list)
+    """IDs from ``**Traceability:**`` lines, e.g.
+    ``["FVTSR_PAM_0002", "HW-IRS_PAM_219"]``."""
+
+    reference_ids: list[str] = field(default_factory=list)
+    """IDs from ``**Reference:**`` lines (test cases only)."""
+
+
+
