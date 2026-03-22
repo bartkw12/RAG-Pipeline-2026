@@ -55,3 +55,67 @@ _RE_FIGURE = re.compile(
 )
 
 
+# ── Data structures ─────────────────────────────────────────────
+
+
+@dataclass
+class ContentBlock:
+    """A contiguous block of non-heading content within a section.
+
+    Attributes
+    ----------
+    block_type:
+        One of ``"atomic_delimited"``, ``"table"``, ``"list"``,
+        ``"figure"``, or ``"prose"``.
+    text:
+        Raw Markdown text of this block (newlines preserved).
+    start_line:
+        1-based line number where the block starts in the source Markdown.
+    end_line:
+        1-based line number where the block ends (inclusive).
+    """
+
+    block_type: str
+    text: str
+    start_line: int
+    end_line: int
+
+
+@dataclass
+class SectionNode:
+    """A node in the Markdown heading hierarchy.
+
+    The root node (level 0) is a synthetic container that holds the
+    entire document.  Real sections correspond to ``#``–``######``
+    headings (levels 1–6).
+
+    Attributes
+    ----------
+    heading:
+        Heading text without the ``#`` prefix (e.g. ``"5 VERIFICATION
+        OF MECHANICAL CHARACTERISTICS"``).  Empty string for the root.
+    level:
+        Heading depth: 0 for root, 1 for ``#``, 2 for ``##``, etc.
+    section_number:
+        Extracted numeric prefix (e.g. ``"1.5.3"``), or ``None``.
+    start_line:
+        1-based line number of the heading (0 for root).
+    end_line:
+        1-based line number of the last line belonging to this section
+        (set during tree construction).
+    children:
+        Child ``SectionNode`` objects (sub-headings).
+    content_blocks:
+        Leaf content between the heading and the first child heading
+        (or the end of the section).
+    """
+
+    heading: str = ""
+    level: int = 0
+    section_number: str | None = None
+    start_line: int = 0
+    end_line: int = 0
+    children: list[SectionNode] = field(default_factory=list)
+    content_blocks: list[ContentBlock] = field(default_factory=list)
+
+    
