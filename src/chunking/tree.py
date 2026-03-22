@@ -118,4 +118,77 @@ class SectionNode:
     children: list[SectionNode] = field(default_factory=list)
     content_blocks: list[ContentBlock] = field(default_factory=list)
 
-    
+
+# ── Content segmentation ────────────────────────────────────────
+
+
+def _segment_content_lines(
+    lines: list[str],
+    base_line: int,
+) -> list[ContentBlock]:
+    """Segment a run of non-heading lines into typed ``ContentBlock`` objects.
+
+    Parameters
+    ----------
+    lines:
+        The raw lines (no headings) to segment.
+    base_line:
+        1-based line number of the first element in *lines* within
+        the overall Markdown document.
+
+    Returns
+    -------
+    list[ContentBlock]
+        Ordered content blocks.  Empty input yields an empty list.
+    """
+    if not lines:
+        return []
+
+    blocks: list[ContentBlock] = []
+
+    # ── Pass 1: Extract atomic-delimited blocks ─────────────────
+    # The ``---`` lines act as SEPARATORS between atomic blocks,
+    # NOT as open/close pairs.  Every run of content between two
+    # consecutive ``---`` lines is one ``atomic_delimited`` block.
+    # Content before the first ``---`` and after the last ``---``
+    # are non-delimited gaps.
+
+    gaps: list[tuple[int, int]] = []       # (start_idx, end_idx) of non-delimited runs
+    delimited: list[tuple[int, int]] = []  # (start_idx, end_idx) of delimited blocks
+
+    # Collect indices of all separator lines.
+    sep_indices = [
+        idx for idx, line in enumerate(lines)
+        if _RE_SEPARATOR.match(line)
+    ]
+
+    if not sep_indices:
+        # No delimiters at all — everything is a gap.
+        gaps.append((0, len(lines) - 1))
+    else:
+        # Content before the first separator → gap.
+        if sep_indices[0] > 0:
+            gaps.append((0, sep_indices[0] - 1))
+
+        # Content between consecutive separators → atomic_delimited.
+        for i in range(len(sep_indices) - 1):
+            content_start = sep_indices[i] + 1
+            content_end = sep_indices[i + 1] - 1
+            if content_end >= content_start:
+                delimited.append((content_start, content_end))
+
+        # Content after the last separator → gap.
+        if sep_indices[-1] < len(lines) - 1:
+            gaps.append((sep_indices[-1] + 1, len(lines) - 1))
+
+    # Build atomic_delimited ContentBlocks.
+    for start_idx, end_idx in delimited:
+        text = "\n".join(lines[start_idx : end_idx + 1]).strip()
+        if text:
+            blocks.append(ContentBlock(
+                block_type="atomic_delimited",
+                text=text,
+                start_line=base_line + start_idx,
+                end_line=base_line + end_idx,
+            ))
+
