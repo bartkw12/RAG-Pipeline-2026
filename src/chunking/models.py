@@ -42,3 +42,24 @@ class ChunkTier(int, Enum):
     DOCUMENT = 1
     SECTION = 2
     ATOMIC = 3
+
+
+# ── Chunk-level metadata ───────────────────────────────────────
+
+
+@dataclass
+class ChunkMetadata:
+    """Rich metadata attached to every chunk.
+
+    Fields are populated selectively based on ``ChunkType``:
+
+    * **Universal fields** are set for all chunks.
+    * **Test-case fields** are set only when ``chunk_type == TEST_CASE``.
+    * **Requirement fields** are set only when ``chunk_type == REQUIREMENT``.
+    """
+
+    # ── Universal fields (all chunk types) ──────────────────────
+    section_path: list[str] = field(default_factory=list)
+    """Ordered list of heading texts from root to the chunk's
+    nearest enclosing section, e.g.
+    ``["1 INTRODUCTION", "1.5 REFERENCES", "1.5.2 Additional references"]``."""
