@@ -117,5 +117,30 @@ class ChunkMetadata:
     reference_ids: list[str] = field(default_factory=list)
     """IDs from ``**Reference:**`` lines (test cases only)."""
 
+    # ── Requirement fields (ChunkType.REQUIREMENT only) ─────────
+    requirement_ids: list[str] = field(default_factory=list)
+    """All ``HW-IRS_xxx_nnn`` identifiers in the block."""
+
+    category: str | None = None
+    """DOORS category: ``"Requirement"``, ``"Background"``,
+    ``"Definition"``, ``"Picture"``, etc."""
+
+    allocation: str | None = None
+    """DOORS allocation: ``"HW"``, ``"NA"``, etc."""
+
+    priority: str | None = None
+    """DOORS priority: ``"Mandatory"``, ``"NA"``, etc."""
+
+    safety: str | None = None
+    """DOORS safety flag: ``"Yes"``, ``"No"``, ``"NA"``."""
+
+    verification_method: str | None = None
+    """DOORS verification method: ``"Test"``, ``"Analysis"``,
+    ``"Inspection"``, ``"Demonstration"``, ``"NA"``."""
+
+    is_background: bool = False
+    """True when the requirement block's category is ``"Background"``
+    (contextual info, not a testable requirement)."""
+
 
 
