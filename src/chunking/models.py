@@ -143,4 +143,47 @@ class ChunkMetadata:
     (contextual info, not a testable requirement)."""
 
 
+# ── Document-level metadata ─────────────────────────────────────
 
+
+@dataclass
+class DocumentMeta:
+    """Metadata extracted from the document's front-matter and headings.
+
+    Populated once per document and inherited by every chunk via the
+    Tier 1 document node.
+    """
+
+    doc_title: str = ""
+    """Primary document title (first ``##`` heading)."""
+
+    doc_type: str = ""
+    """Classified document type: ``"FVTR"``, ``"HwIRS"``, or ``""``
+    for unrecognised formats."""
+
+    module_name: str = ""
+    """Short module identifier, e.g. ``"PAM"``, ``"DIM-V"``."""
+
+    module_full_name: str = ""
+    """Full module name, e.g. ``"PWM and Analogue I/O Module"``."""
+
+    system: str = ""
+    """System identifier, e.g. ``"TOP"``."""
+
+    source_file: str = ""
+    """Original filename of the ingested document."""
+
+    revision: str = ""
+    """Latest revision number from the change-log table."""
+
+    revision_date: str = ""
+    """Date of the latest revision."""
+
+    authors: list[str] = field(default_factory=list)
+    """Names from the ``Written by`` row of the approval table."""
+
+    approvers: list[str] = field(default_factory=list)
+    """Names from the ``Approved by`` row of the approval table."""
+
+    page_count: int = 0
+    """Number of pages in the source document."""
