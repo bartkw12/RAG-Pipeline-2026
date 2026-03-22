@@ -84,4 +84,27 @@ class ChunkMetadata:
     """Thales item numbers found in the text,
     e.g. ``["7HA-02944-AAAA"]``."""
 
+    # ── Test-case fields (ChunkType.TEST_CASE only) ─────────────
+    test_case_id: str | None = None
+    """Identifier like ``"FVTR_OPT_01"`` or ``"FVTR_FUNC_13"``."""
 
+    test_name: str | None = None
+    """Short name of the test (e.g. ``"Labelling and assembly"``)."""
+
+    test_result: str | None = None
+    """Outcome: ``"Passed"``, ``"Failed"``, etc."""
+
+    test_item: str | None = None
+    """Unit(s) under test (e.g. ``"MAV8"`` or ``"MAV6, MAV7"``)."""
+
+    date: str | None = None
+    """Date the test was performed."""
+
+    tester: str | None = None
+    """Person who carried out the test."""
+
+    verifier: str | None = None
+    """Person who verified the test."""
+
+    failure_criteria: str | None = None
+    """Stated failure criteria for the test."""
