@@ -228,4 +228,19 @@ class Chunk:
     token_count: int = 0
     parent_id: str | None = None
     children_ids: list[str] = field(default_factory=list)
-    metadata: ChunkMetadata = field(default_factory=ChunkMetadata)
+    metadata: ChunkMetadata = field(default_factory=ChunkMetadata)\
+
+
+# ── Chunked document (top-level container) ──────────────────────
+
+
+@dataclass
+class ChunkedDocument:
+    """Complete chunking result for a single ingested document.
+
+    Serialised to ``cache/chunk/{doc_id}.json`` by the writer module.
+    """
+
+    doc_id: str
+    doc_metadata: DocumentMeta = field(default_factory=DocumentMeta)
+    chunks: list[Chunk] = field(default_factory=list)
