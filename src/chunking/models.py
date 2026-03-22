@@ -187,3 +187,45 @@ class DocumentMeta:
 
     page_count: int = 0
     """Number of pages in the source document."""
+
+
+# ── Chunk ───────────────────────────────────────────────────────
+
+
+@dataclass
+class Chunk:
+    """A single chunk in the three-tier hierarchy.
+
+    Attributes
+    ----------
+    chunk_id:
+        Deterministic identifier: ``sha256(doc_id + section_path + index)``.
+    doc_id:
+        SHA-256 hex digest of the source file (from the ingestion registry).
+    chunk_type:
+        Semantic type (test case, requirement, table, prose, …).
+    tier:
+        Hierarchy level (1 = document, 2 = section, 3 = atomic).
+    text:
+        The chunk's Markdown content.
+    token_count:
+        Number of tokens in *text* (computed via ``tiktoken``).
+    parent_id:
+        ``chunk_id`` of the parent chunk (Tier 2 for atomics,
+        Tier 1 for sections, ``None`` for the document node).
+    children_ids:
+        ``chunk_id`` values of direct children.  Populated for
+        Tier 1 and Tier 2 chunks; empty for Tier 3 leaves.
+    metadata:
+        Rich metadata specific to this chunk.
+    """
+
+    chunk_id: str
+    doc_id: str
+    chunk_type: ChunkType
+    tier: ChunkTier
+    text: str
+    token_count: int = 0
+    parent_id: str | None = None
+    children_ids: list[str] = field(default_factory=list)
+    metadata: ChunkMetadata = field(default_factory=ChunkMetadata)
