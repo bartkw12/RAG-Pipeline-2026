@@ -97,8 +97,34 @@ def chunk_document(
 
     all_chunks: list[Chunk] = [doc_chunk]
 
-    # 4 & 5. Walk ## sections → Tier 2 + depth-first → Tier 3.
-    for sec_idx, section in enumerate(tree.children):
+    # Identify front-matter sections (everything before the first
+    # section that has a numeric section_number, e.g. "1 Introduction").
+    front_matter_sections: list[SectionNode] = []
+    body_sections: list[SectionNode] = []
+    found_numbered = False
+    for section in tree.children:
+        if not found_numbered and section.section_number is None:
+            front_matter_sections.append(section)
+        else:
+            found_numbered = True
+            body_sections.append(section)
+
+    # Also include root-level content blocks (before the first heading)
+    # as front-matter.
+    root_blocks = tree.content_blocks
+
+    # 4a. Create front-matter Tier 2 + Tier 3 chunks.
+    if front_matter_sections or root_blocks:
+        fm_chunks = _build_front_matter_chunks(
+            root_blocks, front_matter_sections, doc_id, doc_chunk_id, config,
+        )
+        all_chunks.extend(fm_chunks)
+        # Link the section chunk (first item) to the document.
+        if fm_chunks:
+            doc_chunk.children_ids.append(fm_chunks[0].chunk_id)
+
+    # 4b & 5. Walk numbered ## sections → Tier 2 + depth-first → Tier 3.
+    for sec_idx, section in enumerate(body_sections):
         if section.level != 2:
             # Some documents have level-1 headings at top; treat the
             # same as level-2 for Tier 2 purposes.
@@ -321,6 +347,125 @@ def _extract_approval(markdown: str, meta: DocumentMeta) -> None:
         elif "approved by" in label and name:
             meta.approvers = [name]
 
+
+# ── Front-matter chunk builder ──────────────────────────────────
+
+
+def _build_front_matter_chunks(
+    root_blocks: list,
+    front_matter_sections: list[SectionNode],
+    doc_id: str,
+    doc_chunk_id: str,
+    config: ChunkConfig,
+) -> list[Chunk]:
+    """Create a synthetic 'Front Matter' Tier 2 section plus Tier 3 children.
+
+    The front matter includes root-level content blocks (before the first
+    heading) and any un-numbered sections that precede the first numbered
+    body section (title pages, revision logs, approval tables, etc.).
+
+    Returns
+    -------
+    list[Chunk]
+        The Tier 2 section chunk followed by zero or more Tier 3 chunks.
+        The caller links the first element (Tier 2) to the document chunk.
+    """
+    section_path = ["Front Matter"]
+    sec_chunk_id = _make_id(doc_id, section_path, 0, 0)
+
+    # Collect (text, node_or_None) pairs from root blocks, then from each
+    # front-matter section's subtree.
+    raw_items: list[tuple[str, SectionNode | None]] = []
+
+    # Synthetic root node used as the "parent" for root-level blocks.
+    _root_node = SectionNode(heading="Front Matter", level=0)
+
+    for block in root_blocks:
+        raw_items.append((block.text, _root_node))
+
+    for section in front_matter_sections:
+        # Include the heading itself as context prefix for the section's
+        # content blocks, then walk the subtree.
+        for block in section.content_blocks:
+            raw_items.append((block.text, section))
+        for child in section.children:
+            for block in child.content_blocks:
+                raw_items.append((block.text, child))
+
+    if not raw_items:
+        return []
+
+    # Build summary text for the Tier 2 chunk.
+    summary_parts = ["## Front Matter"]
+    for section in front_matter_sections:
+        summary_parts.append(f"- {section.heading}")
+    sec_text = "\n".join(summary_parts)
+
+    sec_chunk = Chunk(
+        chunk_id=sec_chunk_id,
+        doc_id=doc_id,
+        chunk_type=ChunkType.SECTION,
+        tier=ChunkTier.SECTION,
+        text=sec_text,
+        token_count=count_tokens(sec_text, config.encoding_name),
+        parent_id=doc_chunk_id,
+        children_ids=[],
+        metadata=ChunkMetadata(
+            section_path=section_path,
+            section_number=None,
+            heading="Front Matter",
+        ),
+    )
+
+    # Produce Tier 3 FRONT_MATTER chunks — one per content block.
+    atomic_chunks: list[Chunk] = []
+    for emit_idx, (text, node) in enumerate(raw_items):
+        text = text.strip()
+        if not text:
+            continue
+        tokens = count_tokens(text, config.encoding_name)
+        if tokens > config.split_threshold:
+            # Oversized: split (tables row-wise, others paragraph-wise).
+            splits = _split_atomic(text, ChunkType.FRONT_MATTER, config)
+            for sub_idx, sub_text in enumerate(splits):
+                cid = _make_id(doc_id, section_path, emit_idx, sub_idx)
+                atomic_chunks.append(Chunk(
+                    chunk_id=cid,
+                    doc_id=doc_id,
+                    chunk_type=ChunkType.FRONT_MATTER,
+                    tier=ChunkTier.ATOMIC,
+                    text=sub_text,
+                    token_count=count_tokens(sub_text, config.encoding_name),
+                    parent_id=sec_chunk_id,
+                    children_ids=[],
+                    metadata=ChunkMetadata(
+                        section_path=section_path,
+                        heading=node.heading if node else "Front Matter",
+                        has_table=detect_embedded_tables(sub_text),
+                        has_figure=detect_embedded_figures(sub_text),
+                    ),
+                ))
+        else:
+            cid = _make_id(doc_id, section_path, emit_idx, 0)
+            atomic_chunks.append(Chunk(
+                chunk_id=cid,
+                doc_id=doc_id,
+                chunk_type=ChunkType.FRONT_MATTER,
+                tier=ChunkTier.ATOMIC,
+                text=text,
+                token_count=tokens,
+                parent_id=sec_chunk_id,
+                children_ids=[],
+                metadata=ChunkMetadata(
+                    section_path=section_path,
+                    heading=node.heading if node else "Front Matter",
+                    has_table=detect_embedded_tables(text),
+                    has_figure=detect_embedded_figures(text),
+                ),
+            ))
+
+    sec_chunk.children_ids = [c.chunk_id for c in atomic_chunks]
+    return [sec_chunk] + atomic_chunks
 
 
 # ── Table parsing helpers ───────────────────────────────────────
