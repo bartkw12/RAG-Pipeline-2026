@@ -205,6 +205,74 @@ def _segment_content_lines(
     return blocks
 
 
+def _segment_non_delimited(
+    lines: list[str],
+    base_line: int,
+) -> list[ContentBlock]:
+    """Segment non-delimited lines into table / list / figure / prose blocks.
+
+    Called for content that is NOT between ``---`` delimiters.
+    """
+    blocks: list[ContentBlock] = []
+    if not lines:
+        return blocks
+
+    current_type: str | None = None
+    current_lines: list[str] = []
+    current_start = 0
+
+    def _flush() -> None:
+        """Emit the accumulated lines as a ContentBlock."""
+        nonlocal current_type, current_lines, current_start
+        if current_type is None or not current_lines:
+            current_lines = []
+            current_type = None
+            return
+        text = "\n".join(current_lines).strip()
+        if text:
+            blocks.append(ContentBlock(
+                block_type=current_type,
+                text=text,
+                start_line=base_line + current_start,
+                end_line=base_line + current_start + len(current_lines) - 1,
+            ))
+        current_lines = []
+        current_type = None
+
+    for idx, line in enumerate(lines):
+        line_type = _classify_line(line)
+
+        # Blank lines: flush current accumulator except inside tables
+        # (table separator rows look blank-ish but match _RE_TABLE_ROW).
+        if not line.strip():
+            if current_type == "table":
+                # Blank line ends a table.
+                _flush()
+            elif current_type is not None:
+                # For prose / list: blank line is part of the block
+                # (paragraphs are separated by blanks).
+                current_lines.append(line)
+            continue
+
+        # If the line type matches what we're accumulating, extend.
+        if line_type == current_type:
+            current_lines.append(line)
+            continue
+
+        # Type changed — flush previous, start new.
+        # Special case: within a list, non-list continuation lines
+        # (indented or prose) stay with the list.
+        if current_type == "list" and line_type == "prose" and _is_list_continuation(line):
+            current_lines.append(line)
+            continue
+
+        _flush()
+        current_type = line_type
+        current_start = idx
+        current_lines = [line]
+
+    _flush()
+    return blocks
 
 
 
