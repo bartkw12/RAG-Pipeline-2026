@@ -353,3 +353,67 @@ def _split_table_cells(line: str) -> list[str]:
     stripped = line.strip().strip("|")
     return [c.strip() for c in stripped.split("|")]
 
+
+# ── Section summary builder ─────────────────────────────────────
+
+
+def _build_document_summary(meta: DocumentMeta) -> str:
+    """Create synthetic text for the Tier 1 document chunk."""
+    parts = []
+    if meta.doc_title:
+        parts.append(meta.doc_title)
+    if meta.module_full_name:
+        parts.append(f"Module: {meta.module_full_name} ({meta.module_name})")
+    elif meta.module_name:
+        parts.append(f"Module: {meta.module_name}")
+    if meta.doc_type:
+        parts.append(f"Document type: {meta.doc_type}")
+    if meta.system:
+        parts.append(f"System: {meta.system}")
+    if meta.revision:
+        parts.append(f"Revision: {meta.revision} ({meta.revision_date})")
+    if meta.authors:
+        parts.append(f"Authors: {', '.join(meta.authors)}")
+    return "\n".join(parts)
+
+
+def _build_section_summary(section: SectionNode) -> str:
+    """Create summary text for a Tier 2 section chunk.
+
+    Includes the section heading plus the first sentence or paragraph
+    of each child sub-section.
+    """
+    parts = [f"## {section.heading}"]
+
+    # Include first prose block of this section (if any).
+    for block in section.content_blocks:
+        if block.block_type in ("prose", "atomic_delimited"):
+            first_para = block.text.split("\n\n")[0].strip()
+            if first_para:
+                parts.append(first_para)
+            break
+
+    # Include headings + first sentences from child sections.
+    for child in section.children:
+        parts.append(f"### {child.heading}")
+        for block in child.content_blocks:
+            if block.block_type in ("prose", "atomic_delimited"):
+                first_sent = _first_sentence(block.text)
+                if first_sent:
+                    parts.append(first_sent)
+                break
+
+    return "\n\n".join(parts)
+
+
+def _first_sentence(text: str) -> str:
+    """Return the first sentence of *text* (up to the first '. ')."""
+    text = text.strip()
+    # Try period followed by space or end of text.
+    m = re.search(r"\.\s", text)
+    if m and m.start() < 300:
+        return text[: m.start() + 1]
+    # Fallback: first line.
+    first_line = text.split("\n")[0].strip()
+    return first_line[:300]
+
