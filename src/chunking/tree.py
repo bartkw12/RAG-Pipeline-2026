@@ -192,3 +192,19 @@ def _segment_content_lines(
                 end_line=base_line + end_idx,
             ))
 
+    # ── Pass 2: Segment the gaps (non-delimited content) ────────
+    for gap_start_idx, gap_end_idx in gaps:
+        gap_lines = lines[gap_start_idx : gap_end_idx + 1]
+        gap_base = base_line + gap_start_idx
+        gap_blocks = _segment_non_delimited(gap_lines, gap_base)
+        blocks.extend(gap_blocks)
+
+    # Sort all blocks by start_line so they appear in document order.
+    blocks.sort(key=lambda b: b.start_line)
+
+    return blocks
+
+
+
+
+
