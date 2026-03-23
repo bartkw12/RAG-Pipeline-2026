@@ -398,3 +398,30 @@ def build_section_tree(markdown: str) -> SectionNode:
 
     return root
 
+
+# ── Stack helpers ───────────────────────────────────────────────
+
+
+def _flush_content(
+    stack: list[tuple[SectionNode, list[str], int]],
+) -> None:
+    """Segment and attach accumulated content lines to the top-of-stack node."""
+    node, content_lines, content_base = stack[-1]
+    if content_lines:
+        blocks = _segment_content_lines(content_lines, content_base)
+        node.content_blocks.extend(blocks)
+    # Reset the accumulator (keep the same tuple reference by mutation).
+    stack[-1] = (node, [], content_base + len(content_lines))
+
+
+def _finalise_node(
+    stack: list[tuple[SectionNode, list[str], int]],
+    end_line: int,
+) -> None:
+    """Pop the top node off the stack and set its end_line."""
+    node, content_lines, content_base = stack.pop()
+    # Flush any remaining content.
+    if content_lines:
+        blocks = _segment_content_lines(content_lines, content_base)
+        node.content_blocks.extend(blocks)
+    node.end_line = end_line
