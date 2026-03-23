@@ -82,6 +82,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Re-ingest all files, ignoring the duplicate registry.",
     )
+    behaviour.add_argument(
+        "--skip-chunking",
+        action="store_true",
+        help="Skip the chunking step after parsing. Useful when you want to re-chunk later with different settings.",
+    )
 
     # ── Output control ──────────────────────────────────────────
     output = parser.add_argument_group("output")
@@ -202,6 +207,7 @@ def main(argv: list[str] | None = None) -> int:
         dry_run=args.dry_run,
         force=args.force,
         parser_config=parser_config,
+        skip_chunking=args.skip_chunking,
     )
 
     # Print summary to stdout (not via logging, so --quiet still shows it)
