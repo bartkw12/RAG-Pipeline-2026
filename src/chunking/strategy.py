@@ -178,3 +178,147 @@ def extract_document_metadata(
     _extract_approval(markdown, meta)
 
     return meta
+
+
+# ── Title / doc-type extraction helpers ─────────────────────────
+
+_FVTR_KEYWORDS = re.compile(
+    r"verification\s+test\s+report|FVTR", re.IGNORECASE
+)
+_HWIRS_KEYWORDS = re.compile(
+    r"requirements?\s+specification|HwIRS|HWIRS", re.IGNORECASE
+)
+
+
+def _extract_title_and_type(headings: list[str], meta: DocumentMeta) -> None:
+    """Set ``doc_title`` and ``doc_type`` from the first headings."""
+    for h in headings[:5]:
+        if _FVTR_KEYWORDS.search(h):
+            meta.doc_title = h
+            meta.doc_type = "FVTR"
+            return
+        if _HWIRS_KEYWORDS.search(h):
+            meta.doc_title = h
+            meta.doc_type = "HwIRS"
+            return
+    # Fallback: use the first heading as title.
+    if headings:
+        meta.doc_title = headings[0]
+
+
+_RE_MODULE_PARENS = re.compile(r"\(([A-Z][A-Z0-9-]+)\)")
+_RE_MODULE_DASH = re.compile(
+    r"(?:module|board)\s*[-–—]\s*(?:vital\s*)?\(?([A-Z][A-Z0-9-]+)",
+    re.IGNORECASE,
+)
+
+# Abbreviations that refer to the system or doc type, not the module.
+_NON_MODULE_ABBREVS = frozenset({"TOP", "FVTR", "HWIRS", "TAS"})
+
+
+def _extract_module_info(headings: list[str], meta: DocumentMeta) -> None:
+    """Set ``module_name`` and ``module_full_name``."""
+    # First pass: look for a dedicated module heading.
+    for h in headings[:5]:
+        if re.search(r"follow-up|introduction|evolutions", h, re.IGNORECASE):
+            continue
+        m = _RE_MODULE_PARENS.search(h)
+        if m and m.group(1).upper() not in _NON_MODULE_ABBREVS:
+            meta.module_name = m.group(1)
+            full = h[: m.start()].strip().rstrip("-–—").strip()
+            if full:
+                meta.module_full_name = full
+            return
+        m2 = _RE_MODULE_DASH.search(h)
+        if m2 and m2.group(1).upper() not in _NON_MODULE_ABBREVS:
+            meta.module_name = m2.group(1)
+            return
+
+    # Second pass: extract module from doc-type headings that embed
+    # module info, e.g. "HwIRS - Digital Inputs Module - Vital (DIM Vital)".
+    for h in headings[:5]:
+        if _FVTR_KEYWORDS.search(h) or _HWIRS_KEYWORDS.search(h):
+            for m in _RE_MODULE_PARENS.finditer(h):
+                abbrev = m.group(1)
+                if abbrev.upper() not in _NON_MODULE_ABBREVS:
+                    meta.module_name = abbrev
+                    return
+            m2 = _RE_MODULE_DASH.search(h)
+            if m2 and m2.group(1).upper() not in _NON_MODULE_ABBREVS:
+                meta.module_name = m2.group(1)
+                return
+
+    # Fallback: look for known short names.
+    combined = " ".join(headings[:5])
+    for candidate in ("DIM-V", "DIM", "PAM", "DOM", "AOM", "COM"):
+        if candidate in combined:
+            meta.module_name = candidate
+            break
+
+
+def _extract_system(headings: list[str], meta: DocumentMeta) -> None:
+    """Set ``system`` — usually 'TOP'."""
+    combined = " ".join(headings[:5])
+    if "TOP" in combined or "TAS-TOP" in combined:
+        meta.system = "TOP"
+
+
+def _extract_revision(
+    tree: SectionNode, markdown: str, meta: DocumentMeta,
+) -> None:
+    """Extract latest revision from the LOG OF CHANGES table."""
+    # Find the "Follow-up of the evolutions" section.
+    evolutions = None
+    for child in tree.children:
+        if re.search(r"follow-up|evolutions", child.heading, re.IGNORECASE):
+            evolutions = child
+            break
+    if evolutions is None:
+        return
+
+    # Look for the LOG OF CHANGES table (not the APPROVAL table).
+    for block in evolutions.content_blocks:
+        if block.block_type != "table":
+            continue
+        upper = block.text.upper()
+        # The revision table contains "LOG OF CHANGES" or a
+        # "Revision" column header.  APPROVAL tables don't.
+        if "LOG OF CHANGES" not in upper and "REVISION" not in upper:
+            continue
+        rows = _parse_table_rows(block.text)
+        if rows:
+            last = rows[-1]
+            if len(last) >= 2:
+                meta.revision = last[0].strip()
+                meta.revision_date = last[1].strip()
+        break
+
+
+def _extract_approval(markdown: str, meta: DocumentMeta) -> None:
+    """Extract author / approver names from the APPROVAL table."""
+    # The approval table is typically within the first ~30 lines of
+    # actual table content. We search for rows containing "Written by"
+    # or "Approved by".
+    lines = markdown.split("\n")
+    in_approval = False
+    for line in lines[:80]:
+        if not _RE_TABLE_ROW.match(line):
+            if in_approval:
+                break
+            continue
+        low = line.lower()
+        if "approval" in low or "written by" in low or "approved by" in low:
+            in_approval = True
+        if not in_approval:
+            continue
+        cells = _split_table_cells(line)
+        if len(cells) < 2:
+            continue
+        label = cells[0].strip().lower()
+        name = cells[1].strip()
+        if "written by" in label and name:
+            meta.authors = [name]
+        elif "approved by" in label and name:
+            meta.approvers = [name]
+
+
