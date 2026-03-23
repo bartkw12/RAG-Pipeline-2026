@@ -131,7 +131,7 @@ def chunk_document(
             pass
 
         section_path = [section.heading]
-        sec_chunk_id = _make_id(doc_id, section_path, sec_idx, 0)
+        sec_chunk_id = _make_id(doc_id, ["__section__"] + section_path, sec_idx, 0)
         sec_text = _build_section_summary(section)
         sec_chunk = Chunk(
             chunk_id=sec_chunk_id,
@@ -154,7 +154,7 @@ def chunk_document(
 
         # Apply merge / keep / split rules → produce Tier 3 chunks.
         atomic_chunks = _process_leaf_blocks(
-            leaf_blocks, doc_id, section_path, sec_chunk_id, config,
+            leaf_blocks, doc_id, section_path, sec_idx, sec_chunk_id, config,
         )
 
         # Link section → atomics.
@@ -371,7 +371,7 @@ def _build_front_matter_chunks(
         The caller links the first element (Tier 2) to the document chunk.
     """
     section_path = ["Front Matter"]
-    sec_chunk_id = _make_id(doc_id, section_path, 0, 0)
+    sec_chunk_id = _make_id(doc_id, ["__section__"] + section_path, 0, 0)
 
     # Collect (text, node_or_None) pairs from root blocks, then from each
     # front-matter section's subtree.
@@ -632,6 +632,7 @@ def _process_leaf_blocks(
     leaf_blocks: list[tuple[SectionNode, int]],
     doc_id: str,
     top_section_path: list[str],
+    sec_idx: int,
     parent_chunk_id: str,
     config: ChunkConfig,
 ) -> list[Chunk]:
@@ -650,6 +651,9 @@ def _process_leaf_blocks(
     chunks: list[Chunk] = []
     for emit_idx, (text, ctype, node, _bidx) in enumerate(merged):
         section_path = _build_section_path(node, top_section_path[0])
+        # Include sec_idx in the ID path to disambiguate sections with
+        # identical headings (e.g. two "## Notes:" sections).
+        id_path = [f"__s{sec_idx}__"] + section_path
         tokens = count_tokens(text, config.encoding_name)
 
         if ctype in _SPLITTABLE_TYPES and tokens > config.max_tokens:
@@ -659,6 +663,7 @@ def _process_leaf_blocks(
                 chunk = _make_chunk(
                     sub_text, ctype, doc_id, section_path,
                     emit_idx, sub_idx, parent_chunk_id, node, config,
+                    id_path=id_path,
                 )
                 chunks.append(chunk)
         elif ctype in _ATOMIC_TYPES and tokens > config.split_threshold:
@@ -668,6 +673,7 @@ def _process_leaf_blocks(
                 chunk = _make_chunk(
                     sub_text, ctype, doc_id, section_path,
                     emit_idx, sub_idx, parent_chunk_id, node, config,
+                    id_path=id_path,
                 )
                 chunks.append(chunk)
         else:
@@ -675,6 +681,7 @@ def _process_leaf_blocks(
             chunk = _make_chunk(
                 text, ctype, doc_id, section_path,
                 emit_idx, 0, parent_chunk_id, node, config,
+                id_path=id_path,
             )
             chunks.append(chunk)
 
@@ -911,9 +918,10 @@ def _make_chunk(
     parent_id: str,
     node: SectionNode,
     config: ChunkConfig,
+    id_path: list[str] | None = None,
 ) -> Chunk:
     """Construct a Tier 3 chunk with metadata."""
-    chunk_id = _make_id(doc_id, section_path, block_index, sub_index)
+    chunk_id = _make_id(doc_id, id_path or section_path, block_index, sub_index)
     token_count = count_tokens(text, config.encoding_name)
 
     meta = _build_metadata(text, ctype, node, section_path)
