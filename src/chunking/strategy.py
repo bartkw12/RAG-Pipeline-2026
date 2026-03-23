@@ -703,6 +703,11 @@ def _process_leaf_blocks(
                 chunks.append(chunk)
         elif ctype in _ATOMIC_TYPES and tokens > config.split_threshold:
             # Force-split oversized atomic block.
+            # Extract metadata from the full text BEFORE splitting so
+            # all fragments inherit the parent's fields (test_case_id,
+            # requirement_ids, etc.) even if the header only appears
+            # in the first fragment.
+            full_meta = _build_metadata(text, ctype, node, section_path)
             splits = _split_atomic(text, ctype, config)
             for sub_idx, sub_text in enumerate(splits):
                 chunk = _make_chunk(
@@ -710,6 +715,7 @@ def _process_leaf_blocks(
                     emit_idx, sub_idx, parent_chunk_id, node, config,
                     id_path=id_path,
                 )
+                _propagate_metadata(full_meta, chunk.metadata, ctype)
                 chunks.append(chunk)
         else:
             # Within budget — emit as one chunk.
@@ -1017,3 +1023,42 @@ def _build_metadata(
         meta.traceability_ids = fields.get("traceability_ids", [])
 
     return meta
+
+
+def _propagate_metadata(
+    source: ChunkMetadata,
+    target: ChunkMetadata,
+    ctype: ChunkType,
+) -> None:
+    """Copy type-specific fields from *source* to *target*.
+
+    Used after splitting an oversized atomic block so that trailing
+    fragments inherit the metadata extracted from the full original
+    text (e.g. ``test_case_id``, ``requirement_ids``).
+    """
+    if ctype == ChunkType.TEST_CASE:
+        target.test_case_id = target.test_case_id or source.test_case_id
+        target.test_name = target.test_name or source.test_name
+        target.test_result = target.test_result or source.test_result
+        target.test_item = target.test_item or source.test_item
+        target.date = target.date or source.date
+        target.tester = target.tester or source.tester
+        target.verifier = target.verifier or source.verifier
+        target.failure_criteria = target.failure_criteria or source.failure_criteria
+        if not target.traceability_ids:
+            target.traceability_ids = list(source.traceability_ids)
+        if not target.reference_ids:
+            target.reference_ids = list(source.reference_ids)
+
+    elif ctype == ChunkType.REQUIREMENT:
+        if not target.requirement_ids:
+            target.requirement_ids = list(source.requirement_ids)
+        target.category = target.category or source.category
+        target.allocation = target.allocation or source.allocation
+        target.priority = target.priority or source.priority
+        target.safety = target.safety or source.safety
+        target.verification_method = target.verification_method or source.verification_method
+        if not target.is_background:
+            target.is_background = source.is_background
+        if not target.traceability_ids:
+            target.traceability_ids = list(source.traceability_ids)
