@@ -322,3 +322,34 @@ def _extract_approval(markdown: str, meta: DocumentMeta) -> None:
             meta.approvers = [name]
 
 
+
+# ── Table parsing helpers ───────────────────────────────────────
+
+
+def _parse_table_rows(text: str) -> list[list[str]]:
+    """Parse a Markdown pipe-table into a list of rows (lists of cell values).
+
+    Skips the header-separator row (``|---|---|``).
+    """
+    rows: list[list[str]] = []
+    for line in text.split("\n"):
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        # Skip separator row.
+        if re.match(r"^\|[\s\-:|]+\|$", line):
+            continue
+        cells = _split_table_cells(line)
+        rows.append(cells)
+    # Skip the header row (first row) if there are data rows.
+    if len(rows) > 1:
+        return rows[1:]
+    return rows
+
+
+def _split_table_cells(line: str) -> list[str]:
+    """Split a pipe-table row into cell values."""
+    # Strip leading/trailing pipes, then split on |.
+    stripped = line.strip().strip("|")
+    return [c.strip() for c in stripped.split("|")]
+
