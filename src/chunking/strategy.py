@@ -752,3 +752,80 @@ def _get_overlap(parts: list[str], config: ChunkConfig) -> str:
     char_count = max(1, int(len(last) * ratio))
     return last[-char_count:]
 
+
+# ── Chunk construction helper ───────────────────────────────────
+
+
+def _make_chunk(
+    text: str,
+    ctype: ChunkType,
+    doc_id: str,
+    section_path: list[str],
+    block_index: int,
+    sub_index: int,
+    parent_id: str,
+    node: SectionNode,
+    config: ChunkConfig,
+) -> Chunk:
+    """Construct a Tier 3 chunk with metadata."""
+    chunk_id = _make_id(doc_id, section_path, block_index, sub_index)
+    token_count = count_tokens(text, config.encoding_name)
+
+    meta = _build_metadata(text, ctype, node, section_path)
+
+    return Chunk(
+        chunk_id=chunk_id,
+        doc_id=doc_id,
+        chunk_type=ctype,
+        tier=ChunkTier.ATOMIC,
+        text=text,
+        token_count=token_count,
+        parent_id=parent_id,
+        children_ids=[],
+        metadata=meta,
+    )
+
+
+def _build_metadata(
+    text: str,
+    ctype: ChunkType,
+    node: SectionNode,
+    section_path: list[str],
+) -> ChunkMetadata:
+    """Populate ``ChunkMetadata`` for a Tier 3 chunk."""
+    meta = ChunkMetadata(
+        section_path=list(section_path),
+        section_number=node.section_number,
+        heading=node.heading,
+        has_table=detect_embedded_tables(text),
+        has_figure=detect_embedded_figures(text),
+        cross_references=extract_cross_references(text),
+        component_ids=extract_component_ids(text),
+    )
+
+    # Type-specific field extraction.
+    if ctype == ChunkType.TEST_CASE:
+        fields = extract_test_case_fields(text)
+        meta.test_case_id = fields.get("test_case_id")
+        meta.test_name = fields.get("test_name")
+        meta.test_result = fields.get("test_result")
+        meta.test_item = fields.get("test_item")
+        meta.date = fields.get("date")
+        meta.tester = fields.get("tester")
+        meta.verifier = fields.get("verifier")
+        meta.failure_criteria = fields.get("failure_criteria")
+        meta.traceability_ids = fields.get("traceability_ids", [])
+        meta.reference_ids = fields.get("reference_ids", [])
+
+    elif ctype == ChunkType.REQUIREMENT:
+        fields = extract_requirement_fields(text)
+        meta.requirement_ids = fields.get("requirement_ids", [])
+        meta.category = fields.get("category")
+        meta.allocation = fields.get("allocation")
+        meta.priority = fields.get("priority")
+        meta.safety = fields.get("safety")
+        meta.verification_method = fields.get("verification_method")
+        meta.is_background = fields.get("is_background", False)
+        meta.traceability_ids = fields.get("traceability_ids", [])
+
+    return meta
