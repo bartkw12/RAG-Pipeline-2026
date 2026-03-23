@@ -292,7 +292,11 @@ def _extract_system(headings: list[str], meta: DocumentMeta) -> None:
 def _extract_revision(
     tree: SectionNode, markdown: str, meta: DocumentMeta,
 ) -> None:
-    """Extract latest revision from the LOG OF CHANGES table."""
+    """Extract latest revision from the LOG OF CHANGES table.
+
+    Falls back to the APPROVAL table's Date column when no dedicated
+    revision log is present (e.g. DIM-V FVTR).
+    """
     # Find the "Follow-up of the evolutions" section.
     evolutions = None
     for child in tree.children:
@@ -317,6 +321,37 @@ def _extract_revision(
             if len(last) >= 2:
                 meta.revision = last[0].strip()
                 meta.revision_date = last[1].strip()
+        break
+
+    # Fallback: if no revision was found, try extracting the latest
+    # date from the APPROVAL table's "Date" column.
+    if not meta.revision_date:
+        _extract_revision_from_approval(evolutions, meta)
+
+
+_RE_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _extract_revision_from_approval(
+    section: SectionNode, meta: DocumentMeta,
+) -> None:
+    """Extract the most recent date from the APPROVAL table as a fallback."""
+    for block in section.content_blocks:
+        if block.block_type != "table":
+            continue
+        if "APPROVAL" not in block.text.upper():
+            continue
+        # Find all YYYY-MM-DD dates in the table rows.
+        dates: list[str] = []
+        rows = _parse_table_rows(block.text)
+        for row in rows:
+            for cell in row:
+                m = _RE_DATE.search(cell)
+                if m:
+                    dates.append(m.group())
+        if dates:
+            dates.sort()
+            meta.revision_date = dates[-1]
         break
 
 
