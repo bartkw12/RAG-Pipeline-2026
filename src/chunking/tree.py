@@ -275,4 +275,19 @@ def _segment_non_delimited(
     return blocks
 
 
+def _classify_line(line: str) -> str:
+    """Return the block type for a single non-blank line."""
+    if _RE_TABLE_ROW.match(line):
+        return "table"
+    if _RE_LIST_ITEM.match(line):
+        return "list"
+    if _RE_FIGURE.search(line):
+        return "figure"
+    return "prose"
+
+
+def _is_list_continuation(line: str) -> bool:
+    """Return True if *line* looks like an indented continuation of a list item."""
+    # Lines indented by 2+ spaces after a list are continuations.
+    return line.startswith("  ") or line.startswith("\t")
 
