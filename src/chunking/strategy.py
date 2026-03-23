@@ -417,3 +417,49 @@ def _first_sentence(text: str) -> str:
     first_line = text.split("\n")[0].strip()
     return first_line[:300]
 
+
+# ── Leaf block collection ───────────────────────────────────────
+
+
+def _collect_leaf_blocks(
+    section: SectionNode,
+) -> list[tuple[SectionNode, int]]:
+    """Depth-first collect of (node, block_index) for all content blocks."""
+    result: list[tuple[SectionNode, int]] = []
+    for idx, _block in enumerate(section.content_blocks):
+        result.append((section, idx))
+    for child in section.children:
+        result.extend(_collect_leaf_blocks(child))
+    return result
+
+
+# ── Section path builder ────────────────────────────────────────
+
+
+def _build_section_path(node: SectionNode, root_heading: str) -> list[str]:
+    """Build the section path from the top-level section down to *node*.
+
+    For simplicity, when the node IS the top-level section the path is
+    just ``[root_heading]``.  For sub-sections the path includes
+    intermediate headings.
+    """
+    # This is called per-block. The top-level section heading is always
+    # the first element; we add the node's heading if it differs.
+    if node.heading == root_heading:
+        return [root_heading]
+    return [root_heading, node.heading]
+
+
+# ── Chunk ID generation ────────────────────────────────────────
+
+
+def _make_id(
+    doc_id: str,
+    section_path: list[str],
+    block_index: int,
+    sub_index: int,
+) -> str:
+    """Deterministic SHA-256 chunk ID."""
+    raw = f"{doc_id}|{'|'.join(section_path)}|{block_index}|{sub_index}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
