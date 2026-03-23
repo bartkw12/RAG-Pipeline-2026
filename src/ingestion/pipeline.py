@@ -21,6 +21,7 @@ import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..chunking.pipeline import chunk_document_file
 from ..config.paths import INPUT_DIR, PROCESSED_DIR, ensure_dirs
 from .parser import ParserConfig, _build_converter, parse_document
 from .registry import (
@@ -134,6 +135,7 @@ def run(
     dry_run: bool = False,
     force: bool = False,
     parser_config: ParserConfig | None = None,
+    skip_chunking: bool = False,
 ) -> PipelineSummary:
     """Run the ingestion pipeline end-to-end.
 
@@ -153,6 +155,9 @@ def run(
     parser_config:
         Optional ``ParserConfig`` for the document parser.  When omitted,
         ``ParserConfig()`` defaults are used.
+    skip_chunking:
+        If True, skip the chunking step after parsing.  Useful when
+        you want to re-chunk later with different settings.
 
     Returns
     -------
@@ -260,6 +265,16 @@ def run(
         if parsed is not None:
             # Register in the ingestion tracker
             registry.register_file(path, doc_id=check.doc_id)
+
+            # Chunk the parsed Markdown (unless opted out)
+            if not skip_chunking:
+                try:
+                    chunk_document_file(check.doc_id)
+                except Exception:
+                    logger.exception(
+                        "Chunking failed for '%s' (doc continues)",
+                        path.name,
+                    )
 
             # Move drop-folder files to processed/
             if selection.mode == SelectionMode.DROP_FOLDER:
