@@ -463,3 +463,125 @@ def _make_id(
     raw = f"{doc_id}|{'|'.join(section_path)}|{block_index}|{sub_index}"
     return hashlib.sha256(raw.encode()).hexdigest()
 
+
+# ── Tier 3 processing: merge / keep / split ─────────────────────
+
+
+_SPLITTABLE_TYPES = frozenset({
+    ChunkType.PROSE,
+    ChunkType.LIST,
+})
+
+_ATOMIC_TYPES = frozenset({
+    ChunkType.TEST_CASE,
+    ChunkType.REQUIREMENT,
+    ChunkType.TABLE,
+    ChunkType.DEFINITION_TABLE,
+    ChunkType.ABBREVIATION_TABLE,
+    ChunkType.FRONT_MATTER,
+    ChunkType.FIGURE,
+})
+
+
+def _process_leaf_blocks(
+    leaf_blocks: list[tuple[SectionNode, int]],
+    doc_id: str,
+    top_section_path: list[str],
+    parent_chunk_id: str,
+    config: ChunkConfig,
+) -> list[Chunk]:
+    """Apply size rules and emit Tier 3 chunks for one ## section."""
+    # First pass: build a list of (text, chunk_type, node, block_idx) items.
+    items: list[tuple[str, ChunkType, SectionNode, int]] = []
+    for node, block_idx in leaf_blocks:
+        block = node.content_blocks[block_idx]
+        ctype = classify_block(block, node)
+        items.append((block.text, ctype, node, block_idx))
+
+    # Second pass: merge small blocks with adjacent siblings.
+    merged = _merge_small_blocks(items, config)
+
+    # Third pass: split oversized blocks; emit final chunks.
+    chunks: list[Chunk] = []
+    for emit_idx, (text, ctype, node, _bidx) in enumerate(merged):
+        section_path = _build_section_path(node, top_section_path[0])
+        tokens = count_tokens(text, config.encoding_name)
+
+        if ctype in _SPLITTABLE_TYPES and tokens > config.max_tokens:
+            # Split prose / list at sentence / paragraph boundaries.
+            splits = _split_text(text, config)
+            for sub_idx, sub_text in enumerate(splits):
+                chunk = _make_chunk(
+                    sub_text, ctype, doc_id, section_path,
+                    emit_idx, sub_idx, parent_chunk_id, node, config,
+                )
+                chunks.append(chunk)
+        elif ctype in _ATOMIC_TYPES and tokens > config.split_threshold:
+            # Force-split oversized atomic block.
+            splits = _split_atomic(text, ctype, config)
+            for sub_idx, sub_text in enumerate(splits):
+                chunk = _make_chunk(
+                    sub_text, ctype, doc_id, section_path,
+                    emit_idx, sub_idx, parent_chunk_id, node, config,
+                )
+                chunks.append(chunk)
+        else:
+            # Within budget — emit as one chunk.
+            chunk = _make_chunk(
+                text, ctype, doc_id, section_path,
+                emit_idx, 0, parent_chunk_id, node, config,
+            )
+            chunks.append(chunk)
+
+    return chunks
+
+
+def _merge_small_blocks(
+    items: list[tuple[str, ChunkType, SectionNode, int]],
+    config: ChunkConfig,
+) -> list[tuple[str, ChunkType, SectionNode, int]]:
+    """Merge blocks under ``min_tokens`` with an adjacent sibling.
+
+    Only merges blocks that share the same parent ``SectionNode``
+    and are both splittable types (prose, list).
+    """
+    if not items:
+        return []
+
+    result: list[tuple[str, ChunkType, SectionNode, int]] = []
+    i = 0
+    while i < len(items):
+        text, ctype, node, bidx = items[i]
+        tokens = count_tokens(text, config.encoding_name)
+
+        if tokens < config.min_tokens and ctype in _SPLITTABLE_TYPES:
+            # Try to merge with the next block if it shares the same
+            # parent node and is also a splittable type.
+            if (
+                i + 1 < len(items)
+                and items[i + 1][2] is node
+                and items[i + 1][1] in _SPLITTABLE_TYPES
+            ):
+                next_text, next_ctype, next_node, next_bidx = items[i + 1]
+                merged_text = text.strip() + "\n\n" + next_text.strip()
+                result.append((merged_text, ctype, node, bidx))
+                i += 2
+                continue
+            # Try to merge with the previous result block.
+            if (
+                result
+                and result[-1][2] is node
+                and result[-1][1] in _SPLITTABLE_TYPES
+            ):
+                prev_text, prev_ctype, prev_node, prev_bidx = result[-1]
+                merged_text = prev_text.strip() + "\n\n" + text.strip()
+                result[-1] = (merged_text, prev_ctype, prev_node, prev_bidx)
+                i += 1
+                continue
+
+        result.append((text, ctype, node, bidx))
+        i += 1
+
+    return result
+
+
