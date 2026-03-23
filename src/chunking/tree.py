@@ -291,3 +291,24 @@ def _is_list_continuation(line: str) -> bool:
     # Lines indented by 2+ spaces after a list are continuations.
     return line.startswith("  ") or line.startswith("\t")
 
+
+# ── Section number extraction ───────────────────────────────────
+
+
+def _extract_section_number(heading: str) -> tuple[str | None, str]:
+    """Extract a leading section number from a heading.
+
+    Returns
+    -------
+    tuple[str | None, str]
+        ``(section_number, remaining_heading_text)``.
+        ``section_number`` is ``None`` if no number is found.
+    """
+    m = _RE_SECTION_NUMBER.match(heading.strip())
+    if m:
+        num = m.group(1).rstrip(".")
+        rest = m.group(2).strip()
+        return num, rest
+    return None, heading.strip()
+
+
