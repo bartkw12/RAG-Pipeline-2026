@@ -585,3 +585,170 @@ def _merge_small_blocks(
     return result
 
 
+# ── Text splitting helpers ──────────────────────────────────────
+
+
+def _split_text(
+    text: str,
+    config: ChunkConfig,
+) -> list[str]:
+    """Split prose or list text at natural boundaries with overlap.
+
+    Tries paragraph breaks (``\\n\\n``) first, then sentence endings
+    (``. `` followed by an uppercase letter).
+    """
+    paragraphs = re.split(r"\n\n+", text.strip())
+    if len(paragraphs) == 1:
+        # No paragraph breaks — split at sentence boundaries.
+        paragraphs = re.split(r"(?<=\.)\s+(?=[A-Z])", text.strip())
+
+    return _pack_segments(paragraphs, config)
+
+
+def _split_atomic(
+    text: str,
+    ctype: ChunkType,
+    config: ChunkConfig,
+) -> list[str]:
+    """Force-split an oversized atomic block.
+
+    For tables: split row-wise, duplicating the header row.
+    For others: split at paragraph or line boundaries.
+    """
+    if ctype in (ChunkType.TABLE, ChunkType.DEFINITION_TABLE,
+                 ChunkType.ABBREVIATION_TABLE):
+        return _split_table(text, config)
+
+    # Test cases / requirements — split at paragraph boundaries.
+    paragraphs = re.split(r"\n\n+", text.strip())
+    if len(paragraphs) <= 1:
+        # Last resort: split at line boundaries.
+        paragraphs = text.strip().split("\n")
+    return _pack_segments(paragraphs, config)
+
+
+def _split_table(text: str, config: ChunkConfig) -> list[str]:
+    """Split a large table row-wise, duplicating the header."""
+    lines = text.strip().split("\n")
+    # Identify header: first row + separator row.
+    header_lines: list[str] = []
+    data_start = 0
+    for idx, line in enumerate(lines):
+        if re.match(r"^\|[\s\-:|]+\|$", line.strip()):
+            header_lines = lines[: idx + 1]
+            data_start = idx + 1
+            break
+
+    if not header_lines:
+        # No separator found — treat as prose split.
+        paragraphs = re.split(r"\n\n+", text.strip())
+        return _pack_segments(paragraphs, config)
+
+    header_text = "\n".join(header_lines)
+    data_lines = lines[data_start:]
+
+    # Pack data rows into chunks, prepending the header to each.
+    splits: list[str] = []
+    current: list[str] = []
+    current_tokens = count_tokens(header_text, config.encoding_name)
+
+    for row in data_lines:
+        row_tokens = count_tokens(row, config.encoding_name)
+        if current and current_tokens + row_tokens > config.max_tokens:
+            splits.append(header_text + "\n" + "\n".join(current))
+            current = [row]
+            current_tokens = count_tokens(header_text, config.encoding_name) + row_tokens
+        else:
+            current.append(row)
+            current_tokens += row_tokens
+
+    if current:
+        splits.append(header_text + "\n" + "\n".join(current))
+
+    return splits if splits else [text]
+
+
+def _pack_segments(
+    segments: list[str],
+    config: ChunkConfig,
+) -> list[str]:
+    """Pack text segments into chunks respecting ``max_tokens``.
+
+    Applies ``overlap_tokens`` of trailing context to each subsequent
+    chunk for continuity.
+    """
+    if not segments:
+        return []
+
+    splits: list[str] = []
+    current_parts: list[str] = []
+    current_tokens = 0
+
+    for seg in segments:
+        seg = seg.strip()
+        if not seg:
+            continue
+        seg_tokens = count_tokens(seg, config.encoding_name)
+
+        # If a single segment exceeds max_tokens, break it into
+        # individual lines so it can be packed across chunks.
+        if seg_tokens > config.max_tokens and "\n" in seg:
+            sub_lines = seg.split("\n")
+            for sub in sub_lines:
+                sub = sub.strip()
+                if not sub:
+                    continue
+                sub_tokens = count_tokens(sub, config.encoding_name)
+                if current_parts and current_tokens + sub_tokens > config.max_tokens:
+                    splits.append("\n\n".join(current_parts))
+                    overlap = _get_overlap(current_parts, config)
+                    if overlap:
+                        current_parts = [overlap, sub]
+                        current_tokens = (
+                            count_tokens(overlap, config.encoding_name) + sub_tokens
+                        )
+                    else:
+                        current_parts = [sub]
+                        current_tokens = sub_tokens
+                else:
+                    current_parts.append(sub)
+                    current_tokens += sub_tokens
+            continue
+
+        if current_parts and current_tokens + seg_tokens > config.max_tokens:
+            # Emit current chunk.
+            splits.append("\n\n".join(current_parts))
+            # Start new chunk with overlap from previous.
+            overlap = _get_overlap(current_parts, config)
+            if overlap:
+                current_parts = [overlap, seg]
+                current_tokens = (
+                    count_tokens(overlap, config.encoding_name) + seg_tokens
+                )
+            else:
+                current_parts = [seg]
+                current_tokens = seg_tokens
+        else:
+            current_parts.append(seg)
+            current_tokens += seg_tokens
+
+    if current_parts:
+        splits.append("\n\n".join(current_parts))
+
+    return splits if splits else ["\n\n".join(segments)]
+
+
+def _get_overlap(parts: list[str], config: ChunkConfig) -> str:
+    """Return up to ``overlap_tokens`` of trailing text from *parts*."""
+    if not parts or config.overlap_tokens <= 0:
+        return ""
+    # Take from the last part, up to overlap_tokens.
+    last = parts[-1]
+    tokens = count_tokens(last, config.encoding_name)
+    if tokens <= config.overlap_tokens:
+        return last
+    # Approximate: take the last N characters proportionally.
+    ratio = config.overlap_tokens / max(tokens, 1)
+    char_count = max(1, int(len(last) * ratio))
+    return last[-char_count:]
+
