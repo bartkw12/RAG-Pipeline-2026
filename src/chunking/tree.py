@@ -312,3 +312,89 @@ def _extract_section_number(heading: str) -> tuple[str | None, str]:
     return None, heading.strip()
 
 
+# ── Tree builder ────────────────────────────────────────────────
+
+
+def build_section_tree(markdown: str) -> SectionNode:
+    """Parse a Markdown document into a hierarchical section tree.
+
+    Parameters
+    ----------
+    markdown:
+        The full Markdown text of a parsed document (from
+        ``cache/markdown/{doc_id}.md``).
+
+    Returns
+    -------
+    SectionNode
+        A synthetic root node (level 0) whose children are the
+        top-level sections.  Content before the first heading is
+        attached as ``content_blocks`` of the root.
+    """
+    all_lines = markdown.split("\n")
+    total_lines = len(all_lines)
+
+    # Synthetic root node that wraps the entire document.
+    root = SectionNode(
+        heading="",
+        level=0,
+        section_number=None,
+        start_line=0,
+        end_line=total_lines,
+    )
+
+    # Stack of (SectionNode, accumulated_content_lines, content_base_line).
+    # We track content lines between headings so we can segment them
+    # into ContentBlocks once a new heading (or EOF) is reached.
+    stack: list[tuple[SectionNode, list[str], int]] = [(root, [], 1)]
+
+    for line_idx, line in enumerate(all_lines):
+        line_no = line_idx + 1  # 1-based
+
+        heading_match = _RE_HEADING.match(line)
+        if heading_match is None:
+            # Non-heading line — accumulate for the current section.
+            _top = stack[-1]
+            _top[1].append(line)
+            continue
+
+        # ── Heading line detected ───────────────────────────────
+        hashes = heading_match.group(1)
+        heading_text = heading_match.group(2).strip()
+        level = len(hashes)
+
+        section_number, _ = _extract_section_number(heading_text)
+
+        new_node = SectionNode(
+            heading=heading_text,
+            level=level,
+            section_number=section_number,
+            start_line=line_no,
+            end_line=total_lines,  # will be narrowed later
+        )
+
+        # Flush accumulated content for the current top-of-stack.
+        _flush_content(stack)
+
+        # Pop stack until we find a parent with a strictly lower level.
+        while len(stack) > 1 and stack[-1][0].level >= level:
+            _finalise_node(stack, line_no - 1)
+
+        # Attach new_node as a child of the current top-of-stack.
+        parent = stack[-1][0]
+        parent.children.append(new_node)
+
+        # Push new_node with an empty content accumulator.
+        # Content lines start on the line AFTER the heading.
+        stack.append((new_node, [], line_no + 1))
+
+    # ── EOF: flush everything remaining on the stack ────────────
+    _flush_content(stack)
+    while len(stack) > 1:
+        _finalise_node(stack, total_lines)
+
+    # Finalise the root.
+    root.end_line = total_lines
+
+    return root
+
