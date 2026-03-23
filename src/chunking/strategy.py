@@ -146,3 +146,35 @@ def chunk_document(
     )
 
 
+# ── Document metadata extraction ────────────────────────────────
+
+
+def extract_document_metadata(
+    markdown: str,
+    tree: SectionNode,
+) -> DocumentMeta:
+    """Parse front-matter headings and tables for document-level info.
+
+    Extracts title, module name, doc type, system, revision info,
+    and author / approver names.
+    """
+    meta = DocumentMeta()
+
+    headings = [c.heading for c in tree.children]
+
+    # Title & doc type — scan the first few ## headings.
+    _extract_title_and_type(headings, meta)
+
+    # Module name — second heading often names the module.
+    _extract_module_info(headings, meta)
+
+    # System — look for "TOP" or similar.
+    _extract_system(headings, meta)
+
+    # Revision info — parse the LOG OF CHANGES table.
+    _extract_revision(tree, markdown, meta)
+
+    # Authors / approvers — parse the APPROVAL table.
+    _extract_approval(markdown, meta)
+
+    return meta
