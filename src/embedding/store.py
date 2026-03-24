@@ -11,9 +11,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 import chromadb
+from chromadb.api.types import Embedding, Metadata
 
 from ..config.paths import EMBED_DIR
 
@@ -76,9 +77,9 @@ class EmbeddingStore:
     def upsert(
         self,
         ids: list[str],
-        embeddings: list[list[float]],
+        embeddings: List[Embedding],
         documents: list[str],
-        metadatas: list[dict[str, Any]],
+        metadatas: List[Metadata],
     ) -> None:
         """Insert or update vectors in the collection.
 
@@ -168,5 +169,5 @@ class EmbeddingStore:
             ids=raw["ids"][0] if raw["ids"] else [],
             distances=raw["distances"][0] if raw["distances"] else [],
             documents=raw["documents"][0] if raw["documents"] else [],
-            metadatas=raw["metadatas"][0] if raw["metadatas"] else [],
+            metadatas=list(raw["metadatas"][0]) if raw["metadatas"] else [],  # type: ignore[arg-type]
         )
