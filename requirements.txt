@@ -1,0 +1,4 @@
+# UC37.5 RAG Pipeline — Python dependencies
+openai>=1.0.0
+chromadb>=1.0.0
+tiktoken>=0.5.0
