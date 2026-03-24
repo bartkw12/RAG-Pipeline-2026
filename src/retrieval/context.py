@@ -82,8 +82,7 @@ def assemble_context(
     # ── 3. Group scored chunks by their tier-2 parent ───────────
     #    key = parent_id (or chunk_id itself if no parent found)
     #    value = list of (ScoredChunk, sibling_index) in insertion order
-    SectionGroup = list[tuple[ScoredChunk, int]]
-    groups: OrderedDict[str, SectionGroup] = OrderedDict()
+    groups: OrderedDict[str, list[tuple[ScoredChunk, int]]] = OrderedDict()
     group_best_score: dict[str, float] = {}
 
     for sc in chunks:
