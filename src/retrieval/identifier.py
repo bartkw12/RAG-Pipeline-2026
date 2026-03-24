@@ -26,7 +26,9 @@ Usage::
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Mapping
+
+from chromadb.api.types import GetResult
 
 from ..embedding.store import EmbeddingStore
 from .models import QueryAnalysis, ScoredChunk
@@ -140,14 +142,16 @@ def _lookup_semicolon_field(
 
     hits: list[ScoredChunk] = []
     target_lower = target.lower()
-    for i, meta in enumerate(raw["metadatas"]):
+    metadatas = raw["metadatas"] or []
+    documents = raw["documents"] or []
+    for i, meta in enumerate(metadatas):
         field_val = str(meta.get(field, "")).lower()
         # Check each semicolon-separated value.
         values = [v.strip() for v in field_val.split(";")]
         if target_lower in values:
             hits.append(_meta_to_scored(
                 chunk_id=raw["ids"][i],
-                document=raw["documents"][i] if raw["documents"] else "",
+                document=documents[i] if i < len(documents) else "",
                 metadata=meta,
             ))
 
@@ -175,21 +179,23 @@ def _lookup_text_scan(
 
     target_lower = target.lower()
     hits: list[ScoredChunk] = []
-    for i, doc_text in enumerate(raw["documents"]):
+    documents = raw["documents"] or []
+    metadatas = raw["metadatas"] or []
+    for i, doc_text in enumerate(documents):
         if target_lower in doc_text.lower():
             hits.append(_meta_to_scored(
                 chunk_id=raw["ids"][i],
                 document=doc_text,
-                metadata=raw["metadatas"][i],
+                metadata=metadatas[i] if i < len(metadatas) else {},
             ))
 
     return hits
 
 
-def _raw_to_scored(raw: dict[str, Any]) -> list[ScoredChunk]:
+def _raw_to_scored(raw: GetResult) -> list[ScoredChunk]:
     """Convert a ChromaDB ``get()`` result dict to ``ScoredChunk`` list."""
     results: list[ScoredChunk] = []
-    ids = raw.get("ids", [])
+    ids = raw.get("ids") or []
     docs = raw.get("documents") or [""] * len(ids)
     metas = raw.get("metadatas") or [{}] * len(ids)
 
@@ -205,7 +211,7 @@ def _raw_to_scored(raw: dict[str, Any]) -> list[ScoredChunk]:
 def _meta_to_scored(
     chunk_id: str,
     document: str,
-    metadata: dict[str, Any],
+    metadata: Mapping[str, Any],
 ) -> ScoredChunk:
     """Build a ``ScoredChunk`` from ChromaDB metadata."""
     return ScoredChunk(
