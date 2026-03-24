@@ -1,4 +1,9 @@
-from .env_config import EnvironmentError, load_local_env, require_env
+from .env_config import (
+    EnvironmentError,
+    load_azure_embedding_config,
+    load_local_env,
+    require_env,
+)
 from .paths import (
     PROJECT_ROOT,
     INPUT_DIR,
@@ -17,6 +22,7 @@ from .paths import (
 __all__ = [
     # env helpers
     "EnvironmentError",
+    "load_azure_embedding_config",
     "load_local_env",
     "require_env",
     # paths & dirs
