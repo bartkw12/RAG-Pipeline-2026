@@ -11,7 +11,7 @@ import logging
 import time
 from typing import Sequence
 
-from openai import AzureOpenAI, APIError, RateLimitError, APITimeoutError
+from openai import AzureOpenAI, APIError, RateLimitError, APITimeoutError, InternalServerError
 
 from ..config.env_config import load_azure_embedding_config
 
@@ -114,7 +114,7 @@ def _embed_batch(
 
             return vectors
 
-        except (RateLimitError, APITimeoutError) as exc:
+        except (RateLimitError, APITimeoutError, InternalServerError) as exc:
             if attempt == _MAX_RETRIES:
                 raise RuntimeError(
                     f"Embedding failed after {_MAX_RETRIES} retries: {exc}"
@@ -127,17 +127,9 @@ def _embed_batch(
             backoff *= 2
 
         except APIError as exc:
-            if exc.status_code and exc.status_code >= 500 and attempt < _MAX_RETRIES:
-                logger.warning(
-                    "Server error %s (attempt %d/%d) — retrying in %.1fs",
-                    exc.status_code, attempt, _MAX_RETRIES, backoff,
-                )
-                time.sleep(backoff)
-                backoff *= 2
-            else:
-                raise RuntimeError(
-                    f"Embedding API error: {exc}"
-                ) from exc
+            raise RuntimeError(
+                f"Embedding API error: {exc}"
+            ) from exc
 
     # Should not be reached, but satisfies the type checker.
     raise RuntimeError("Embedding failed: retries exhausted.")
