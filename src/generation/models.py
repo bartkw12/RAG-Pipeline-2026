@@ -89,3 +89,24 @@ class Citation:
     """Short evidence excerpt provided by the LLM to support
     the cited claim.  May be empty if the model did not
     include a direct quote."""
+
+
+# ── Claim ───────────────────────────────────────────────────────
+
+
+@dataclass
+class Claim:
+    """A single factual statement extracted from the LLM's answer.
+
+    Part of the structured output schema — each claim carries
+    explicit ``source_ids`` so the verifier can confirm that every
+    assertion is backed by retrieved evidence.
+    """
+
+    statement: str
+    """The factual claim text, e.g.
+    ``"The FVTR DIM-V thermal test passed at 85°C."``."""
+
+    source_ids: list[int] = field(default_factory=list)
+    """``[Source N]`` numbers that support this claim.  An empty
+    list means the claim is uncited (flagged by the verifier)."""
