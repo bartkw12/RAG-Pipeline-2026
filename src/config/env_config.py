@@ -196,3 +196,75 @@ def load_azure_embedding_config(
         "model": models[model_key],
         "api_version": api_version,
     }
+
+
+def load_azure_generation_config(
+    config_path: Path | None = None,
+    section: str = "OpenAI2",
+    model_key: str = "GPT-5-mini",
+) -> dict[str, str]:
+    """Load Azure OpenAI credentials for the generation model.
+
+    Parameters
+    ----------
+    config_path:
+        Path to the JSON config file.  Defaults to ``CONFIG_FILE``
+        from ``paths.py``.
+    section:
+        Top-level key in the JSON.  Defaults to ``"OpenAI2"``.
+    model_key:
+        Human-readable model name inside the ``models`` dict.
+        Defaults to ``"GPT-5-mini"``.
+
+    Returns
+    -------
+    dict
+        Keys: ``endpoint``, ``api_key``, ``model``, ``api_version``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the config file does not exist.
+    KeyError
+        If the section or model key is missing.
+    """
+    import json
+
+    from .paths import CONFIG_FILE
+
+    path = config_path or CONFIG_FILE
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found: {path}")
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+
+    if section not in data:
+        raise KeyError(
+            f"Section '{section}' not found in config. "
+            f"Available: {', '.join(data.keys())}"
+        )
+
+    sec = data[section]
+
+    endpoint = sec.get("endpoint") or sec.get("base_url")
+    api_key = sec.get("key") or sec.get("api_key")
+    api_version = sec.get("api_version") or sec.get("version", "2023-05-15")
+
+    if not endpoint:
+        raise KeyError(f"No 'endpoint' or 'base_url' in section '{section}'.")
+    if not api_key:
+        raise KeyError(f"No 'key' or 'api_key' in section '{section}'.")
+
+    models = sec.get("models", {})
+    if model_key not in models:
+        raise KeyError(
+            f"Model '{model_key}' not found in section '{section}'. "
+            f"Available: {', '.join(models.keys())}"
+        )
+
+    return {
+        "endpoint": endpoint,
+        "api_key": api_key,
+        "model": models[model_key],
+        "api_version": api_version,
+    }
