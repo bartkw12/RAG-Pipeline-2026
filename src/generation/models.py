@@ -110,3 +110,24 @@ class Claim:
     source_ids: list[int] = field(default_factory=list)
     """``[Source N]`` numbers that support this claim.  An empty
     list means the claim is uncited (flagged by the verifier)."""
+
+
+# ── Confidence level ────────────────────────────────────────────
+
+
+class ConfidenceLevel(str, Enum):
+    """Tiered confidence for a generation result.
+
+    Used for both the model's self-assessment and the
+    system-computed confidence derived from retrieval signals
+    and structural verification.
+    """
+
+    HIGH = "HIGH"
+    """Direct, unambiguous evidence in the retrieved context."""
+
+    MEDIUM = "MEDIUM"
+    """Indirect or partial evidence — caveats should be stated."""
+
+    LOW = "LOW"
+    """Weak or tangential evidence only, or hard abstention."""
