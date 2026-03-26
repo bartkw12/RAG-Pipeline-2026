@@ -172,3 +172,95 @@ class VerificationResult:
     uncited_claim_indices: list[int] = field(default_factory=list)
     """Zero-based indices into ``claims[]`` for entries whose
     ``source_ids`` list is empty."""
+
+
+# ── Generation result ───────────────────────────────────────────
+
+
+@dataclass
+class GenerationResult:
+    """Complete output of a single generation call.
+
+    Bundles the grounded answer with per-claim citations, structural
+    verification, hybrid confidence, retrieval diagnostics, and
+    usage telemetry.  Supports dual rendering via ``to_text()``
+    (human-readable) and ``to_dict()`` (JSON for agents).
+    """
+
+    # ── Answer ──────────────────────────────────────────────────
+    answer: str = ""
+    """The LLM's response text, potentially containing
+    ``[Source N]`` markers."""
+
+    claims: list[Claim] = field(default_factory=list)
+    """Per-claim breakdown with source mappings from the
+    structured output."""
+
+    citations: list[Citation] = field(default_factory=list)
+    """Resolved source references (one per unique source used)."""
+
+    # ── Abstention / partial answer ─────────────────────────────
+    abstained: bool = False
+    """Hard abstention — the LLM determined no useful answer
+    is possible from the retrieved context."""
+
+    partial: bool = False
+    """Partial answer — the evidence supports part of the query
+    but not all of it."""
+
+    unanswered_aspects: list[str] = field(default_factory=list)
+    """Aspects of the query the evidence does not cover.
+    Populated when ``partial=True``."""
+
+    contradictions_noted: bool = False
+    """The LLM flagged conflicting information between sources."""
+
+    # ── Confidence ──────────────────────────────────────────────
+    model_confidence: ConfidenceLevel = ConfidenceLevel.LOW
+    """The LLM's self-assessed confidence level."""
+
+    model_confidence_reasoning: str = ""
+    """The LLM's explanation of its confidence assessment."""
+
+    system_confidence: ConfidenceLevel = ConfidenceLevel.LOW
+    """Computed confidence from retrieval signals and verification.
+    Final confidence is ``min(model, system)``."""
+
+    confidence_components: dict[str, float] = field(default_factory=dict)
+    """Breakdown: ``retrieval_support``, ``citation_coverage``,
+    ``verification_pass``."""
+
+    # ── Verification ────────────────────────────────────────────
+    verification: VerificationResult = field(default_factory=VerificationResult)
+    """Structural groundedness check output."""
+
+    # ── Provenance ──────────────────────────────────────────────
+    query: str = ""
+    """Original user query."""
+
+    strategy: str = ""
+    """Retrieval strategy used (``exact_lookup``,
+    ``scoped_semantic``, ``unconstrained``)."""
+
+    retrieval_result: Any = None
+    """Full ``RetrievalResult`` from the retrieval pipeline.
+    Typed as ``Any`` to avoid circular imports; always a
+    ``RetrievalResult`` at runtime."""
+
+    # ── Telemetry ───────────────────────────────────────────────
+    model: str = ""
+    """Azure OpenAI deployment name used for generation."""
+
+    usage: dict[str, int] = field(default_factory=dict)
+    """Token usage: ``prompt_tokens``, ``completion_tokens``,
+    ``total_tokens``."""
+
+    elapsed_s: float = 0.0
+    """Generation latency in seconds (LLM call only)."""
+
+    total_elapsed_s: float = 0.0
+    """End-to-end latency (retrieval + generation)."""
+
+    error: str = ""
+    """Non-empty if the generation encountered a recoverable
+    error."""
