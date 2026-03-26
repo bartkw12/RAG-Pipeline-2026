@@ -264,3 +264,130 @@ class GenerationResult:
     error: str = ""
     """Non-empty if the generation encountered a recoverable
     error."""
+
+    # ── Rendering ───────────────────────────────────────────────
+
+    def to_text(self) -> str:
+        """Render a human-readable answer with sources and diagnostics.
+
+        Format::
+
+            Answer:
+            <answer text>
+
+            Confidence: HIGH (system) / HIGH (model)
+            <reasoning>
+
+            Sources:
+            [1] FVTR DIM-V, §5.2 — …  (chunk: abc123)
+                "evidence excerpt …"
+
+            ⚠ Verification: …
+
+            (Retrieval: 0.3s | Generation: 1.2s | Total: 1.5s)
+        """
+        parts: list[str] = []
+
+        # ── Answer block ────────────────────────────────────────
+        parts.append("Answer:")
+        parts.append(self.answer if self.answer else "(no answer)")
+
+        # ── Unanswered aspects ──────────────────────────────────
+        if self.unanswered_aspects:
+            gaps = ", ".join(self.unanswered_aspects)
+            parts.append(f"\nNot covered by available evidence: {gaps}")
+
+        # ── Confidence ──────────────────────────────────────────
+        parts.append(
+            f"\nConfidence: {self.system_confidence.value} (system) "
+            f"/ {self.model_confidence.value} (model)"
+        )
+        if self.model_confidence_reasoning:
+            parts.append(self.model_confidence_reasoning)
+
+        if self.contradictions_noted:
+            parts.append("⚠ Contradictions were detected between sources.")
+
+        # ── Sources block ───────────────────────────────────────
+        if self.citations:
+            parts.append("\nSources:")
+            for c in self.citations:
+                line = f"[{c.source_id}] {c.label}  (chunk: {c.chunk_id[:12]})"
+                parts.append(line)
+                if c.quoted_text:
+                    parts.append(f'    "{c.quoted_text}"')
+
+        # ── Verification summary ────────────────────────────────
+        v = self.verification
+        issues: list[str] = []
+        if not v.all_citations_resolved:
+            issues.append(f"unmapped sources: {v.unmapped_source_ids}")
+        if not v.all_claims_cited:
+            issues.append(f"uncited claims at indices: {v.uncited_claim_indices}")
+        if not v.abstention_consistent:
+            issues.append("abstention flag inconsistent with claims")
+
+        if issues:
+            parts.append(f"\n⚠ Verification issues: {'; '.join(issues)}")
+        else:
+            parts.append(
+                f"\n✓ Verification: all citations resolved, "
+                f"{v.citation_coverage_ratio:.0%} claims cited"
+            )
+
+        # ── Timings ─────────────────────────────────────────────
+        retrieval_s = self.total_elapsed_s - self.elapsed_s
+        parts.append(
+            f"\n(Retrieval: {retrieval_s:.1f}s | "
+            f"Generation: {self.elapsed_s:.1f}s | "
+            f"Total: {self.total_elapsed_s:.1f}s)"
+        )
+
+        return "\n".join(parts)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise the result to a plain dict (JSON-friendly)."""
+        return {
+            "answer": self.answer,
+            "claims": [
+                {"statement": c.statement, "source_ids": c.source_ids}
+                for c in self.claims
+            ],
+            "citations": [
+                {
+                    "source_id": c.source_id,
+                    "label": c.label,
+                    "chunk_id": c.chunk_id,
+                    "doc_id": c.doc_id,
+                    "doc_type": c.doc_type,
+                    "section_heading": c.section_heading,
+                    "section_number": c.section_number,
+                    "quoted_text": c.quoted_text,
+                }
+                for c in self.citations
+            ],
+            "abstained": self.abstained,
+            "partial": self.partial,
+            "unanswered_aspects": self.unanswered_aspects,
+            "contradictions_noted": self.contradictions_noted,
+            "model_confidence": self.model_confidence.value,
+            "model_confidence_reasoning": self.model_confidence_reasoning,
+            "system_confidence": self.system_confidence.value,
+            "confidence_components": self.confidence_components,
+            "verification": {
+                "all_citations_resolved": self.verification.all_citations_resolved,
+                "all_claims_cited": self.verification.all_claims_cited,
+                "contains_unmapped_citations": self.verification.contains_unmapped_citations,
+                "abstention_consistent": self.verification.abstention_consistent,
+                "citation_coverage_ratio": round(self.verification.citation_coverage_ratio, 4),
+                "unmapped_source_ids": self.verification.unmapped_source_ids,
+                "uncited_claim_indices": self.verification.uncited_claim_indices,
+            },
+            "query": self.query,
+            "strategy": self.strategy,
+            "model": self.model,
+            "usage": self.usage,
+            "elapsed_s": round(self.elapsed_s, 3),
+            "total_elapsed_s": round(self.total_elapsed_s, 3),
+            "error": self.error,
+        }
