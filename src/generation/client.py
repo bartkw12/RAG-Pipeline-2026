@@ -80,7 +80,7 @@ def generate_completion(
         "model": creds["model"],
         "messages": messages,
         "temperature": cfg.temperature,
-        "max_tokens": cfg.max_output_tokens,
+        "max_completion_tokens": cfg.max_output_tokens,
         "response_format": {
             "type": "json_schema",
             "json_schema": {
