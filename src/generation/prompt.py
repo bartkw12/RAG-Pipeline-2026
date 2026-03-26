@@ -351,3 +351,45 @@ def get_system_prompt(source_manifest_text: str) -> str:
         ``build_source_manifest()``.
     """
     return _SYSTEM_PROMPT.format(source_manifest=source_manifest_text)
+
+
+# ── Prompt assembly ─────────────────────────────────────────────
+
+
+def build_prompt(
+    query: str,
+    context: ContextWindow,
+) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
+    """Assemble the full message list for the Azure OpenAI chat call.
+
+    Parameters
+    ----------
+    query:
+        The user's natural-language question.
+    context:
+        The ``ContextWindow`` produced by the retrieval pipeline.
+
+    Returns
+    -------
+    tuple[list[dict], list[dict]]
+        ``(messages, source_manifest)`` where *messages* is the
+        OpenAI-format message list (system + user) and
+        *source_manifest* is the structured manifest for
+        ``resolve_citations()`` later.
+    """
+    # 1. Build the numbered source manifest.
+    manifest_text, manifest = build_source_manifest(context)
+
+    # 2. Assemble the system message (guardrails + manifest).
+    system_content = get_system_prompt(manifest_text)
+
+    # 3. Assemble the user message (context + question).
+    context_text = context.to_prompt_text() if context.sections else "(no context)"
+    user_content = f"CONTEXT:\n{context_text}\n\nQUESTION:\n{query}"
+
+    messages: list[dict[str, str]] = [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": user_content},
+    ]
+
+    return messages, manifest
