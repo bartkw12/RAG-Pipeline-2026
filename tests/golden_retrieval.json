@@ -1,0 +1,614 @@
+{
+  "_meta": {
+    "description": "Golden test set for UC37.5 retrieval pipeline evaluation",
+    "version": "1.0.0",
+    "created": "2025-06-01",
+    "documents": {
+      "DIM-V_FVTR": "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+      "PAM_FVTR": "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+      "DIM_HwIRS": "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+    },
+    "query_type_counts": {
+      "exact_lookup": 8,
+      "scoped_semantic": 10,
+      "unconstrained_semantic": 9,
+      "acronym_heavy": 6,
+      "structured_content": 6,
+      "cross_reference": 6
+    }
+  },
+  "queries": [
+    {
+      "query": "FVTR_MECH_01",
+      "query_type": "exact_lookup",
+      "expected_chunk_ids": [
+        "1bcb366823e213b7ae048db096e9cf84d6d8c697a4a6be2ea4e0d6c0c064febf",
+        "33989ca7d6649e26dae1ccf3d9f5f5f417b9f55a243e0187f2d75a142b670e2e"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "DIM-V labelling+assembly, PAM plugging+unplugging. Both modules have this test case."
+    },
+    {
+      "query": "FVTR_FUNC_13",
+      "query_type": "exact_lookup",
+      "expected_chunk_ids": [
+        "ebe38e3d9c63e9e21c2f5f4b4dbaba621e9e90011e558b5f161b49fabf5e3666",
+        "cc980eb66f7bbce8ceda7ec83def07d34980452ecbffc7f7abd7308fcb7d4848",
+        "eb690b47bc1bd5895703c463b6fc59756c8f0d6b3651668b11c70018bbac32b1"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "DIM-V Input Threshold and Timing — 3 chunks (header + 2 data tables)."
+    },
+    {
+      "query": "FVTR_FKT_14",
+      "query_type": "exact_lookup",
+      "expected_chunk_ids": [
+        "513579b36f21b4a81d5687c66dd92eff5273b1ebafaafcccb2ecfcfd83066a7a",
+        "4bacefb138d39c9386d722a99833176ee073d6ddea07d67aaa77183acf32894b",
+        "9b29d1b13bf76b1acbc926adc5517955b2a7e2f332ca53a581801ebfd2758189",
+        "b733cc94dfc991c16591e20adcde1a5351e35d7dc5598b600ff0a33425abf206"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PAM PWM outputs — 4 chunks (header + oscilloscope captures)."
+    },
+    {
+      "query": "FVTR_HVT_01",
+      "query_type": "exact_lookup",
+      "expected_chunk_ids": [
+        "517069d4245a78a68cb04329093e466eb7958032d694477efa6f3b46f1db9b7e",
+        "a1c7de512d0e95f29875fcbe9204e293fe1e6f3ec4a9ad4d2adae2b6b13d137d",
+        "4082ec5600e43c56850c1b5a8ddcc2a650bf9eda9b2adbbbff75f59adb9a0c6e",
+        "4eba5ee39a4cfd2dc19bafc1bc67770c15a55a8a3d2c5d815f333addbc5faf1b"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "DIM-V High Voltage Test — 4 chunks (header + circuits table + 2 results tables)."
+    },
+    {
+      "query": "HW-IRS_DIM_VI_275",
+      "query_type": "exact_lookup",
+      "expected_chunk_ids": [
+        "44bca753e80db97544fd8a56a0f8085f8023df693bb552e5dbdfd0a980354c43"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "HwIRS introduction requirement — DIM module overview definition."
+    },
+    {
+      "query": "HW-IRS_DIM_VI_526",
+      "query_type": "exact_lookup",
+      "expected_chunk_ids": [
+        "ab9535afaa15c2ae6bdc056e5ee23180af9b7a308685d5d951efa4e4fe7575aa"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "HwIRS other requirements — safety-relevant, verification by demonstration."
+    },
+    {
+      "query": "FVTR_OPT_01",
+      "query_type": "exact_lookup",
+      "expected_chunk_ids": [
+        "da6c416eb09e25f23a20384d2d819d54b0db17a6b782ab93ea510b44891f98a4"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PAM labelling and assembly optical test."
+    },
+    {
+      "query": "FVTR_REL_01",
+      "query_type": "exact_lookup",
+      "expected_chunk_ids": [
+        "0eaa0e0e550ce312daae6601db5bc2798509ccf6e5723a00aa0ab125ac39c720",
+        "b496ac3cb21b58641695be71bcac7bf5c7e67b88794ca640b5b81e266eade0ed"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "Reliability test in both DIM-V and PAM FVTRs."
+    },
+    {
+      "query": "DIM-V thermal test results",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "4eba5ee39a4cfd2dc19bafc1bc67770c15a55a8a3d2c5d815f333addbc5faf1b",
+        "4082ec5600e43c56850c1b5a8ddcc2a650bf9eda9b2adbbbff75f59adb9a0c6e",
+        "cfa515a84e28759cc3ac4d8da3600081c374d92bbe8a2769f6db8b75c5954ee7"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "DIM-V HVT results tables and temperature measurement. Scope: DIM-V."
+    },
+    {
+      "query": "PAM analogue output accuracy",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "fc98835a122b9d908eeded7e6fd8a51b2221e5fc0a08d709907df40ed3a4a43a",
+        "b05e61c43741879aed0067abf8a2de20d0a494a09d7ae931717ab11baa76b016",
+        "8333aa71f389274a713d99db0b3607a0886b08e7915284497214c55d5d0b9951"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PAM FVTR_FKT_13 analogue current outputs + FVTR_FKT_12 voltage outputs. Scope: PAM."
+    },
+    {
+      "query": "HW-IRS_DIM_VI_382 threshold specification",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "218c1575e6a5f27d91ee7dc85b26e8c509fa3493e50a7d65b806b02060070e8d",
+        "ddbe1dca7526459953c61a44b2b80d184bc0d025387abca8e7bc4b74664d43dc",
+        "c8d0141e35a633b4aaa7d2c42f091a8242f5e6404b389ecb80fdd572a4006225"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "HwIRS requirement 382 (input circuit thresholds) + surrounding prose/requirements. Scope: HwIRS."
+    },
+    {
+      "query": "DIM-V wetting current measurements",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "55bddaeda73585ec76ae4ce9e9bc6e20c286706ff4dc92b771be1d82f62ca43e",
+        "d01f4450507acf3defff8708d91456a7d4b2bc630303170317e8fc7478dfe5a5"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "FVTR_FUNC_12 and FVTR_FUNC_09 wetting current tests. Scope: DIM-V."
+    },
+    {
+      "query": "PAM high voltage isolation results",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "016f355353584cfc12e63db588629a952604aa16174df5d7758ba470a3732ebb",
+        "9ed32cece0abae8750cc787ac8e6abc10d7a6033d263abefe87fe4afe1105d35",
+        "35fa063510a42850861ec97f266af192a7a9da0aab0ce4fee5453c73face924c"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PAM FVTR_HVT_01 test description + conditions table + results table. Scope: PAM."
+    },
+    {
+      "query": "HwIRS DIM input channel requirements",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "8ab40234a2889bc46ae8611485c50b42a66fdbf5eb82b0fd868317fefeb5baf2",
+        "ff1afa8b92d77d4e50737044fd354eb40e78d8cafa2f12b554d7aee07157d6bb",
+        "78d745641b1c36d4a1f083eda9b874a6730a57b2bdf4421583063ccca031cef8"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "HwIRS general + semiconductor signal source requirements for DIM input channels. Scope: HwIRS."
+    },
+    {
+      "query": "DIM-V FVTR power consumption",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "ece4159eb8c9241486b1a004578654790075b75b111e03addca5e326480b3270",
+        "8582ab0f56d6eedb668b09ea342423cec79b03a0b4f3af80f63d39f7c2cd9d7c"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "FVTR_FUNC_04 power supply current + FVTR_FUNC_03 power supplies. Scope: DIM-V."
+    },
+    {
+      "query": "PAM PWM output frequency range",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "513579b36f21b4a81d5687c66dd92eff5273b1ebafaafcccb2ecfcfd83066a7a",
+        "b733cc94dfc991c16591e20adcde1a5351e35d7dc5598b600ff0a33425abf206",
+        "4bacefb138d39c9386d722a99833176ee073d6ddea07d67aaa77183acf32894b"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PAM FVTR_FKT_14 PWM output test chunks. Scope: PAM."
+    },
+    {
+      "query": "FVTR_MECH_09 dimension compliance",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "9f1ee3248cd0fc1b56807bca15d7649c0b9e14eeec43e22f817636ee0ca7db26",
+        "70f00f0bfdea18faee57cd50c8af5306973bf8e76ec42675eed570901ea48051"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "HwIRS mechanical/packaging requirements. Weak results — semantic match to dimension/compliance."
+    },
+    {
+      "query": "HwIRS galvanic isolation requirements",
+      "query_type": "scoped_semantic",
+      "expected_chunk_ids": [
+        "3605bca58adb455965d044aba106ac1784486cc13fcc21f5cc1a689bdd91359c",
+        "bcd2ef087b8fdaf979efe966d388bb2b9feae28c76b906b1a62f5a36ea7507ff"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "HW-IRS_DIM_VI_381 module isolation + HW-IRS_DIM_VI_459 functional safety isolation. Scope: HwIRS."
+    },
+    {
+      "query": "What is the thermal protection approach?",
+      "query_type": "unconstrained_semantic",
+      "expected_chunk_ids": [
+        "b15aa7f5e7fc8a342b6bff70d53807f149db2186cd40f5c71e75cfdf31b0ac95",
+        "5c843a45117710a6c9bb38ecfe2d2a3f979f0e7cad38b000109562b91ad9f9ac",
+        "f38eed6cf32c1edb6be5ab674d6e674b63956457e9cd08ce420debc5f44904d5"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "PAM SAF_05 surge protection, PAM MECH_04 thermal management, DIM-V MECH_18 surge protection."
+    },
+    {
+      "query": "How is latent failure detection implemented?",
+      "query_type": "unconstrained_semantic",
+      "expected_chunk_ids": [
+        "3f7323835b0b8e5ee7e009a881a834584b01d70119adefbe188b8bb1f55a957e",
+        "c47f2a4ea45a46fecb8e1cb580eee52b32676702852519f1e253f6f2e239e155",
+        "5e23c4a509bcd8042786339393cef4cff6135d5e88eb049e38e93e2b00c33608"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "DIM-V FVTR_FUNC_10 LFD test + HwIRS LFD requirements (280, 384). Cross-doc."
+    },
+    {
+      "query": "What are the power consumption limits?",
+      "query_type": "unconstrained_semantic",
+      "expected_chunk_ids": [
+        "ece4159eb8c9241486b1a004578654790075b75b111e03addca5e326480b3270",
+        "a93a3a2ac60127b3ce8df172e5d1f2b37899601546c112fe2a96f4a000d22899",
+        "47addb108d8e8465119bcffcd2a2efb32eded3715b5042afa5f05292fc01106e"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "DIM-V FUNC_04 current, PAM FKT_26 power consumption, HwIRS power rail notes. All 3 docs."
+    },
+    {
+      "query": "Describe the high voltage test procedure",
+      "query_type": "unconstrained_semantic",
+      "expected_chunk_ids": [
+        "35fa063510a42850861ec97f266af192a7a9da0aab0ce4fee5453c73face924c",
+        "016f355353584cfc12e63db588629a952604aa16174df5d7758ba470a3732ebb",
+        "517069d4245a78a68cb04329093e466eb7958032d694477efa6f3b46f1db9b7e"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "PAM + DIM-V HVT_01 test procedures. Both FVTRs have high voltage sections."
+    },
+    {
+      "query": "What safety standards are referenced?",
+      "query_type": "unconstrained_semantic",
+      "expected_chunk_ids": [
+        "8b08d6f752619e9dfae20d002cb4048211a21a26172d501a25745285b8250b79",
+        "f82deb4a3618b8189ad6b3e50387d85c8779a25f93ad080f0c8b5d39f8cfd6c3",
+        "6d75f42fb98f9f158d55a22738bf94677a5c325052277f96f782afa75b218b16"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "PAM SAF_01, DIM-V SAF_01, HwIRS functional safety 286. All 3 docs."
+    },
+    {
+      "query": "How does conformal coating protect the board?",
+      "query_type": "unconstrained_semantic",
+      "expected_chunk_ids": [
+        "e8d3d3cba347d31ef51f6edc0f712dd09dac6ba050c709c97fbe989fae9a6884",
+        "523286070e157b4fb8f9941626b962a5741f5ab7bdbb318c174838b57f0bb8b7",
+        "2dbd0b5b2273106399b9afa97123bf638806d8900f6aac59643f08e39186784b"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "PAM MECH_03, DIM-V MECH_13, HwIRS industrialization 292. All 3 docs."
+    },
+    {
+      "query": "What is the expected service life and maintainability?",
+      "query_type": "unconstrained_semantic",
+      "expected_chunk_ids": [
+        "c572313278f74f6ca1e37189a6b4ee877c38a21274042f0d0d34c7dbe5d04be3",
+        "7ab99e6a9a29800bd64613049638fb772d0a4fb49cde89bbd2b06f4650a512d6",
+        "61d2f197fc3d6d05efdc0707847c847e4e59129c14f8324e441a5b09ff94afba",
+        "7c2832f0e2089b9944dde874b009bf1bdbb1682253722411ff41a33cf1a78c87"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "DIM-V REL_03 service life, HwIRS MTBF req, PAM REL_02 operational life, DIM-V REL_02 maintainability."
+    },
+    {
+      "query": "How are analogue inputs measured and calibrated?",
+      "query_type": "unconstrained_semantic",
+      "expected_chunk_ids": [
+        "6925966270fe423e733441ff787aa7489ea35d6d47fa74fc00ac421fa2fd7a65",
+        "4b38c3ee16b6c8dee93a82cd6daf9269574f0719be8b4b66c4de69e5e2a7e36c",
+        "073f43706c453f9a7d11138451e834bffec9ae13fc16be6d441cb9d872dc5cbb"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "DIM-V + PAM calibrated test equipment sections plus PAM analogue voltage inputs."
+    },
+    {
+      "query": "What are the environmental operating conditions?",
+      "query_type": "unconstrained_semantic",
+      "expected_chunk_ids": [
+        "a5e4bdf9c54f81c4431a712ced7fc4bbfb203b539f637585beb84452421052ef",
+        "803e6f3aa46810c024244655a1492305a7205cc290b160d030c1e95e24e0bb03",
+        "d1469954f9337a8c087a4293c4fbc6ad4083b8cfe03d90d6170c3fc317742ae2"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "PAM + DIM-V environmental/EMC sections + HwIRS qualification/testing 473. All 3 docs."
+    },
+    {
+      "query": "DIM LFD implementation",
+      "query_type": "acronym_heavy",
+      "expected_chunk_ids": [
+        "5e23c4a509bcd8042786339393cef4cff6135d5e88eb049e38e93e2b00c33608",
+        "c47f2a4ea45a46fecb8e1cb580eee52b32676702852519f1e253f6f2e239e155",
+        "3f7323835b0b8e5ee7e009a881a834584b01d70119adefbe188b8bb1f55a957e"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f",
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "LFD=Latent Failure Detection. HwIRS requirements 384, 280 + DIM-V FUNC_10 test."
+    },
+    {
+      "query": "PAM PWM ESD protection",
+      "query_type": "acronym_heavy",
+      "expected_chunk_ids": [
+        "7f350bed24f680d131cf00c2793f7072c3e9f31846b3f53a84502c78314f9de4",
+        "c09d544a1bf55c0d2950d271e0891e3bf05d068297c14b4a53d2aec7af69de3b",
+        "4bacefb138d39c9386d722a99833176ee073d6ddea07d67aaa77183acf32894b"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PWM=Pulse Width Modulation, ESD=Electrostatic Discharge. PAM FKT_18 IO protection + FKT_17 ESD + FKT_14 PWM."
+    },
+    {
+      "query": "MTBF MTTR reliability",
+      "query_type": "acronym_heavy",
+      "expected_chunk_ids": [
+        "a6514ed99704bca6bef4e13d8d91298c3acc474a90e59ff4570795db13552c32",
+        "46320f3898101d06c03abac4f4a8ab6cde277c81a883017a78916be4df200414",
+        "0eaa0e0e550ce312daae6601db5bc2798509ccf6e5723a00aa0ab125ac39c720"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "MTBF=Mean Time Between Failures, MTTR=Mean Time To Repair. HwIRS reliability + PAM REL_03 + DIM-V REL_01."
+    },
+    {
+      "query": "TOP EEPROM storage requirements",
+      "query_type": "acronym_heavy",
+      "expected_chunk_ids": [
+        "1d35da6612bf3544c78f2269e63847422487c9b69281d5c504967f146cf9a5bb",
+        "03d6434ab888f170094da55a70a9d3c465a2c228b456d986316e06a8aba8172a",
+        "91921009c485b023135666480f7a12feff27f7701b8e97e09dea2252e5e1652e"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "TOP=Train Operation Processor, EEPROM. DIM-V FUNC_16 serial EEPROMs + PAM FKT_21 storage + HwIRS 477."
+    },
+    {
+      "query": "PSU DC voltage derating",
+      "query_type": "acronym_heavy",
+      "expected_chunk_ids": [
+        "0a8840c7c3becea9853c2875956647c06074a498c6ddff29fef5a7418a75779b",
+        "09793f5535a71ed76eb57e1cc4aebf552210ef8194ac949ed57b8d6f212ac77e",
+        "59315155a7ef88769ad55e4b1ad76dc8a470063d38788a8a688543b394d11fc1"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "PSU=Power Supply Unit, DC. DIM-V MECH_15 derating + PAM FKT_03 derating + HwIRS 413 component derating."
+    },
+    {
+      "query": "HW IRS CAN interface",
+      "query_type": "acronym_heavy",
+      "expected_chunk_ids": [
+        "6088eb459653ded0f971553ee7a7615bc0b00809c4d8a17c11452c7656ecb0b9",
+        "81d63b8b46e75adf0b2273673f7f29d07cf914ebea9adacfa6308f45410add56"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "CAN=Controller Area Network. HwIRS definitions/abbreviations + overview 278."
+    },
+    {
+      "query": "DIM-V test equipment calibration table",
+      "query_type": "structured_content",
+      "expected_chunk_ids": [
+        "285c9c6e97dffc6b637f75c9cb78640036bff9364766c3bf001f4802684a8454",
+        "6925966270fe423e733441ff787aa7489ea35d6d47fa74fc00ac421fa2fd7a65",
+        "a13af7320e1543a21a9e613ec6ae3e75aa5a899ba0fe87e6570c3a5fb1c7a08d"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "DIM-V Table 8 calibrated equipment (table chunk) + prose heading + Table 9 non-calibrated."
+    },
+    {
+      "query": "PAM analogue current output measurement table",
+      "query_type": "structured_content",
+      "expected_chunk_ids": [
+        "fc98835a122b9d908eeded7e6fd8a51b2221e5fc0a08d709907df40ed3a4a43a",
+        "b05e61c43741879aed0067abf8a2de20d0a494a09d7ae931717ab11baa76b016"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PAM FVTR_FKT_13 analogue current outputs — header + measurement data chunk."
+    },
+    {
+      "query": "DIM-V high voltage test circuit definitions",
+      "query_type": "structured_content",
+      "expected_chunk_ids": [
+        "a1c7de512d0e95f29875fcbe9204e293fe1e6f3ec4a9ad4d2adae2b6b13d137d",
+        "4082ec5600e43c56850c1b5a8ddcc2a650bf9eda9b2adbbbff75f59adb9a0c6e",
+        "517069d4245a78a68cb04329093e466eb7958032d694477efa6f3b46f1db9b7e"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "DIM-V HVT_01 Table 1 circuits + Table 2 results + test header."
+    },
+    {
+      "query": "PAM board variant configuration",
+      "query_type": "structured_content",
+      "expected_chunk_ids": [
+        "08437d9f64d575cbcd46e40eb0969c4c7d0389fa84649ca458fc65954c734b1d",
+        "21398097a6e784301ad822da480fe7d393a29c406c81907c9f4c2ca47ed8186d"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PAM FKT_11 variant design test + Table 7 test item table."
+    },
+    {
+      "query": "DIM-V input threshold specification table",
+      "query_type": "structured_content",
+      "expected_chunk_ids": [
+        "d47ea578688a393cfa534c96f8d69fa54b6d0e292df3716ecdf83e7f74127b08",
+        "ebe38e3d9c63e9e21c2f5f4b4dbaba621e9e90011e558b5f161b49fabf5e3666",
+        "cc980eb66f7bbce8ceda7ec83def07d34980452ecbffc7f7abd7308fcb7d4848"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "notes": "DIM-V FUNC_07 input circuit threshold + FUNC_13 threshold data tables."
+    },
+    {
+      "query": "PAM PWM output oscilloscope captures",
+      "query_type": "structured_content",
+      "expected_chunk_ids": [
+        "4bacefb138d39c9386d722a99833176ee073d6ddea07d67aaa77183acf32894b",
+        "b733cc94dfc991c16591e20adcde1a5351e35d7dc5598b600ff0a33425abf206",
+        "9b29d1b13bf76b1acbc926adc5517955b2a7e2f332ca53a581801ebfd2758189"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PAM FVTR_FKT_14 oscilloscope capture chunks (CH1-CH4 signal pairs)."
+    },
+    {
+      "query": "Which tests verify HW-IRS_DIM_VI_381?",
+      "query_type": "cross_reference",
+      "expected_chunk_ids": [
+        "3605bca58adb455965d044aba106ac1784486cc13fcc21f5cc1a689bdd91359c",
+        "01be4bf32d8ea5469dc4a2db51c0ebccb6fecd80f1042fda15d4328c8df9fa38"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "HwIRS 381 requirement (module isolation) -> PAM FKT_19 galvanic isolation test."
+    },
+    {
+      "query": "What requirements does FVTR_FKT_05 trace to?",
+      "query_type": "cross_reference",
+      "expected_chunk_ids": [
+        "585607f0efa648da21f5f9927b804f54b919276f53febcd0f8196cf409d67f8a"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "Traceability query. May need identifier lookup fallthrough. Weak semantic results."
+    },
+    {
+      "query": "HWADD:TOP:0012 architecture definition",
+      "query_type": "cross_reference",
+      "expected_chunk_ids": [
+        "9473d57106ba2f9337c6104c0a01857bba1370dfbc4a70cc6db2e51ed19eab97",
+        "381d2071ba20308ac4fa9655a492f3d90e57fdbdfda48dc25e026f7cd7258177"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "Architecture add reference. HwIRS requirements 390, 373 trace to HWADD:TOP:0012."
+    },
+    {
+      "query": "Which tests cover HW-IRS_PAM_93?",
+      "query_type": "cross_reference",
+      "expected_chunk_ids": [
+        "9f5169862640fa8053f9aba58da50b833081176af7ce04cad5965b11365550e1",
+        "b5a51ef9d29248a4881ca8544b5811dc10c5e9a47cf056ce5f0f40996a4f6502"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "PAM requirement traceability. Weak semantic match — may need traceability scan."
+    },
+    {
+      "query": "FVTR_FUNC_06 input circuit requirements",
+      "query_type": "cross_reference",
+      "expected_chunk_ids": [
+        "59dc9ef7e5b37005a9ba8dceaeacfc192eef48b00e1eb08c40826ac672ce20db",
+        "8ab40234a2889bc46ae8611485c50b42a66fdbf5eb82b0fd868317fefeb5baf2",
+        "51c469a4f6f29103ad63ae162a0977659fcb72299798bd52fc257c3c60dc1249"
+      ],
+      "expected_doc_ids": [
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "notes": "Cross-ref from DIM-V FVTR test to HwIRS input circuit requirements (metallic contact + general)."
+    },
+    {
+      "query": "What does FVTSR_PAM_0002 trace to?",
+      "query_type": "cross_reference",
+      "expected_chunk_ids": [
+        "5f4b88c2e5498f8cd7f7c7f0504488c3d6520607484664620f84d9e990317730",
+        "146ce1ea4a787bc9f671222b4f817240fdc92d971390218cff772c9e27cb4c60",
+        "6a5b1fa0137e4f2a99f78f5fe82397bad7360388a15a991ff07e7ec8f718f6e4"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "notes": "FVTSR reference traceability. PAM section headers containing FVTSR cross-references."
+    }
+  ]
+}
