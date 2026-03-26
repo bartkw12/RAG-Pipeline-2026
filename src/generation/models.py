@@ -131,3 +131,44 @@ class ConfidenceLevel(str, Enum):
 
     LOW = "LOW"
     """Weak or tangential evidence only, or hard abstention."""
+
+
+# ── Verification result ─────────────────────────────────────────
+
+
+@dataclass
+class VerificationResult:
+    """Deterministic structural-groundedness check on a generation.
+
+    Produced by ``verify_generation()`` — validates that the LLM's
+    structured output is internally consistent and that every cited
+    source maps to real retrieved context.  No LLM calls; purely
+    rule-based.
+    """
+
+    all_citations_resolved: bool = True
+    """Every ``source_id`` in ``claims[].source_ids`` maps to an
+    entry in the source manifest."""
+
+    all_claims_cited: bool = True
+    """Every claim in ``claims[]`` has at least one ``source_id``."""
+
+    contains_unmapped_citations: bool = False
+    """The model cited a ``source_id`` that does not exist in the
+    source manifest (potential hallucinated reference)."""
+
+    abstention_consistent: bool = True
+    """If ``abstained=True`` the claims list is empty; if
+    ``abstained=False`` the claims list is non-empty."""
+
+    citation_coverage_ratio: float = 1.0
+    """Fraction of claims that have at least one valid citation.
+    ``1.0`` when all claims are cited; ``0.0`` when none are."""
+
+    unmapped_source_ids: list[int] = field(default_factory=list)
+    """Specific ``[Source N]`` numbers that were cited but do not
+    exist in the source manifest."""
+
+    uncited_claim_indices: list[int] = field(default_factory=list)
+    """Zero-based indices into ``claims[]`` for entries whose
+    ``source_ids`` list is empty."""
