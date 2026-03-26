@@ -13,6 +13,7 @@ from typing import Any
 
 from ..chunking.writer import load_chunks
 from ..retrieval.models import ContextWindow
+from .models import Citation
 
 logger = logging.getLogger(__name__)
 
@@ -393,3 +394,68 @@ def build_prompt(
     ]
 
     return messages, manifest
+
+
+# ── Citation resolution ─────────────────────────────────────────
+
+
+def resolve_citations(
+    raw_response: dict[str, Any],
+    source_manifest: list[dict[str, Any]],
+) -> list[Citation]:
+    """Map ``[Source N]`` references from the structured output to ``Citation`` objects.
+
+    Collects every unique ``source_id`` referenced across all claims
+    in the structured response and resolves each against the source
+    manifest built during prompt construction.
+
+    Parameters
+    ----------
+    raw_response:
+        Parsed JSON from the LLM's structured output.
+    source_manifest:
+        The manifest list returned by ``build_source_manifest()``.
+
+    Returns
+    -------
+    list[Citation]
+        One ``Citation`` per unique referenced source, ordered by
+        ``source_id``.  Sources not found in the manifest are
+        still included with empty fields (flagged by the verifier).
+    """
+    # Build a quick lookup: source_id → manifest entry.
+    manifest_by_id: dict[int, dict[str, Any]] = {
+        entry["source_id"]: entry for entry in source_manifest
+    }
+
+    # Collect all unique source IDs referenced in claims.
+    referenced_ids: set[int] = set()
+    for claim in raw_response.get("claims", []):
+        for sid in claim.get("source_ids", []):
+            referenced_ids.add(sid)
+
+    # Resolve each to a Citation.
+    citations: list[Citation] = []
+    for sid in sorted(referenced_ids):
+        entry = manifest_by_id.get(sid)
+        if entry is not None:
+            citations.append(Citation(
+                source_id=sid,
+                label=entry["label"],
+                chunk_id=entry["chunk_ids"][0] if entry["chunk_ids"] else "",
+                doc_id=entry["doc_id"],
+                doc_type=entry.get("doc_type", ""),
+                section_heading=entry.get("section_heading", ""),
+                section_number=entry.get("section_number", ""),
+            ))
+        else:
+            # Unmapped source — verifier will flag this.
+            logger.warning("Source %d cited but not in manifest.", sid)
+            citations.append(Citation(
+                source_id=sid,
+                label=f"(unmapped source {sid})",
+                chunk_id="",
+                doc_id="",
+            ))
+
+    return citations
