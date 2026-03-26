@@ -16,6 +16,7 @@ _SUBCOMMANDS = {
     "embed":    "src.cli.embed",
     "retrieve": "src.cli.retrieve",
     "evaluate": "src.cli.evaluate",
+    "generate": "src.cli.generate",
 }
 
 
@@ -57,6 +58,8 @@ def main() -> int:
         from .retrieve import main as _main
     elif sub == "evaluate":
         from .evaluate import main as _main
+    elif sub == "generate":
+        from .generate import main as _main
     else:
         return 1
 
