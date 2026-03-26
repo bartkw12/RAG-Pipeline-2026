@@ -38,9 +38,10 @@ class GenerationConfig:
     Azure credentials (endpoint, API key, API version)."""
 
     # ── Generation parameters ───────────────────────────────────
-    temperature: float = 0.1
-    """Sampling temperature.  Low values (0.0–0.1) favour
-    consistency and repeatability for engineering QA."""
+    temperature: float = 1.0
+    """Sampling temperature.  Reasoning models (GPT-5 family) only
+    support the default value of 1.  For non-reasoning models, lower
+    values (0.0–0.2) favour consistency."""
 
     max_output_tokens: int = 2048
     """Maximum tokens the model may generate in a single response."""

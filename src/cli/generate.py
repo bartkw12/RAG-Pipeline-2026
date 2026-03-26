@@ -58,9 +58,9 @@ def _build_parser() -> argparse.ArgumentParser:
     gen.add_argument(
         "--temperature",
         type=float,
-        default=0.1,
+        default=1.0,
         metavar="T",
-        help="Sampling temperature (default: 0.1).",
+        help="Sampling temperature (default: 1.0; reasoning models only support 1).",
     )
     gen.add_argument(
         "--max-tokens",

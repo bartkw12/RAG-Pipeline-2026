@@ -79,7 +79,6 @@ def generate_completion(
     kwargs: dict[str, Any] = {
         "model": creds["model"],
         "messages": messages,
-        "temperature": cfg.temperature,
         "max_completion_tokens": cfg.max_output_tokens,
         "response_format": {
             "type": "json_schema",
@@ -90,6 +89,12 @@ def generate_completion(
             },
         },
     }
+
+    # Temperature: reasoning models (GPT-5 family) only support the
+    # default value (1).  Only include it when explicitly set to a
+    # non-default value for non-reasoning models.
+    if cfg.temperature is not None and cfg.temperature != 1.0:
+        kwargs["temperature"] = cfg.temperature
 
     # Optional reasoning-effort control (GPT-5 family).
     if cfg.reasoning_effort is not None:
