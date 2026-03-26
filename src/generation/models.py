@@ -49,3 +49,43 @@ class GenerationConfig:
     """Optional reasoning-effort control for GPT-5 family models
     (e.g. ``"low"``, ``"medium"``, ``"high"``).  Silently ignored
     when the deployment does not support it."""
+
+
+# ── Citation ────────────────────────────────────────────────────
+
+
+@dataclass
+class Citation:
+    """A resolved source reference linking an LLM claim to retrieved evidence.
+
+    Built by ``resolve_citations()`` after generation, by mapping the
+    ``[Source N]`` markers in the LLM's answer back to the numbered
+    source manifest that was included in the prompt.
+    """
+
+    source_id: int
+    """The ``[Source N]`` number used in the answer text."""
+
+    label: str
+    """Human-readable reference, e.g.
+    ``"FVTR DIM-V, §5.2 — Verification of thermal performance"``."""
+
+    chunk_id: str
+    """Primary chunk identifier for machine traceability."""
+
+    doc_id: str
+    """SHA-256 document hash of the source file."""
+
+    doc_type: str = ""
+    """Document type: ``"FVTR"``, ``"HwIRS"``, or ``""``."""
+
+    section_heading: str = ""
+    """Tier-2 section heading text from the context window."""
+
+    section_number: str = ""
+    """Numeric section identifier, e.g. ``"5.2"``."""
+
+    quoted_text: str = ""
+    """Short evidence excerpt provided by the LLM to support
+    the cited claim.  May be empty if the model did not
+    include a direct quote."""
