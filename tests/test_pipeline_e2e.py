@@ -26,7 +26,7 @@ from src.generation.pipeline import generate
 # ── Shared config & query ───────────────────────────────────────
 
 _GEN_CFG = GenerationConfig(model="gpt-5-mini")
-_QUERY = "FVTR_MECH_01"
+_QUERY = "FVTR_HVT_01"
 
 
 # ── Single shared result (avoid redundant API calls) ────────────

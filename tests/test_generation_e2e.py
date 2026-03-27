@@ -61,7 +61,7 @@ def _assert_is_valid_result(result: GenerationResult) -> None:
 class TestExactLookupGroundedAnswer:
     """Query a known test case ID and verify the answer is grounded."""
 
-    QUERY = "What are the results for FVTR_MECH_01?"
+    QUERY = "What are the results for FVTR_HVT_01?"
 
     def test_does_not_abstain(self):
         result = generate(self.QUERY, generation_config=_GEN_CFG)
@@ -88,7 +88,7 @@ class TestExactLookupGroundedAnswer:
         lower = result.answer.lower()
         assert any(
             term in lower
-            for term in ["fvtr_mech_01", "mech_01", "mechanical", "labelling"]
+            for term in ["fvtr_hvt_01", "hvt_01", "high voltage", "isolation"]
         ), f"Answer does not mention expected terms: {result.answer[:200]}"
 
 
@@ -152,7 +152,7 @@ class TestEmptyContextAbstains:
 class TestVerificationPassesOnRealResponse:
     """A well-scoped query should produce a fully-verified response."""
 
-    QUERY = "What are the DIM-V mechanical test results?"
+    QUERY = "What are the DIM-V high voltage test results?"
 
     def test_all_citations_resolved(self):
         result = generate(self.QUERY, generation_config=_GEN_CFG)
