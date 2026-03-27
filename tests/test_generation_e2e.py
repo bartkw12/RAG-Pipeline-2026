@@ -98,10 +98,8 @@ class TestEmptyContextAbstains:
 
     def test_abstains(self):
         empty_retrieval = RetrievalResult(
-            query="Unrelated question about nothing in the corpus",
-            analysis=QueryAnalysis(
+            query_analysis=QueryAnalysis(
                 original_query="Unrelated question",
-                normalized_query="unrelated question",
                 strategy=QueryStrategy.UNCONSTRAINED,
             ),
             scored_chunks=[],
@@ -117,10 +115,8 @@ class TestEmptyContextAbstains:
 
     def test_no_claims(self):
         empty_retrieval = RetrievalResult(
-            query="Unrelated question about nothing in the corpus",
-            analysis=QueryAnalysis(
+            query_analysis=QueryAnalysis(
                 original_query="Unrelated question",
-                normalized_query="unrelated question",
                 strategy=QueryStrategy.UNCONSTRAINED,
             ),
             scored_chunks=[],
@@ -136,10 +132,8 @@ class TestEmptyContextAbstains:
 
     def test_answer_indicates_abstention(self):
         empty_retrieval = RetrievalResult(
-            query="Unrelated question about nothing in the corpus",
-            analysis=QueryAnalysis(
+            query_analysis=QueryAnalysis(
                 original_query="Unrelated question",
-                normalized_query="unrelated question",
                 strategy=QueryStrategy.UNCONSTRAINED,
             ),
             scored_chunks=[],
