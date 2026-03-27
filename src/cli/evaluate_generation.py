@@ -135,6 +135,18 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # ── Evaluation options ──────────────────────────────────────
+    evl = parser.add_argument_group("evaluation options")
+    evl.add_argument(
+        "--semantic",
+        action="store_true",
+        dest="semantic_facts",
+        help=(
+            "Use an LLM-as-judge (GPT-5-nano) for semantic fact "
+            "matching instead of strict substring matching."
+        ),
+    )
+
     # ── Output options ──────────────────────────────────────────
     output = parser.add_argument_group("output options")
     output.add_argument(
@@ -212,6 +224,7 @@ def main(argv: list[str] | None = None) -> int:
         retrieval_config=ret_config,
         generation_config=gen_config,
         query_type_filter=args.query_type,
+        semantic_facts=args.semantic_facts,
     )
 
     # ── Display / save ──────────────────────────────────────────

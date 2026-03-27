@@ -52,8 +52,10 @@ def compute_system_confidence(
 
     if best_vector >= 0.85:
         retrieval_support = 1.0
-    elif best_vector >= 0.70:
-        retrieval_support = 0.7
+    elif best_vector >= 0.75:
+        retrieval_support = 0.85
+    elif best_vector >= 0.65:
+        retrieval_support = 0.65
     else:
         retrieval_support = 0.4
 
@@ -74,7 +76,7 @@ def compute_system_confidence(
         "verification_pass": verification_pass,
     }
 
-    if all(v >= 0.8 for v in components.values()):
+    if all(v >= 0.75 for v in components.values()):
         system = ConfidenceLevel.HIGH
     elif all(v >= 0.5 for v in components.values()):
         system = ConfidenceLevel.MEDIUM

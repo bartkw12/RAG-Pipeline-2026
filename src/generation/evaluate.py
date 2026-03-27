@@ -34,6 +34,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from openai import AzureOpenAI
+
+from ..config.env_config import load_azure_generation_config
 from ..retrieval.models import RetrievalConfig
 from .models import ConfidenceLevel, GenerationConfig, GenerationResult
 from .pipeline import generate
@@ -243,6 +246,106 @@ def _fact_recall(
     return recall, matched, missed
 
 
+def _semantic_fact_recall(
+    answer: str,
+    expected_facts: list[str],
+    judge_client: AzureOpenAI,
+    judge_model: str,
+) -> tuple[float, list[str], list[str]]:
+    """Compute fact recall using an LLM-as-judge for semantic matching.
+
+    For each expected fact, asks a small model whether the answer
+    contains the semantic equivalent of that fact.  More accurate
+    than substring matching for paraphrased answers.
+
+    Parameters
+    ----------
+    answer:
+        The generation pipeline's answer text.
+    expected_facts:
+        List of expected fact strings from the golden set.
+    judge_client:
+        An ``AzureOpenAI`` client instance for the judge model.
+    judge_model:
+        Deployment name for the judge (e.g. ``"gpt-5-nano"``).
+
+    Returns
+    -------
+    tuple[float, list[str], list[str]]
+        ``(recall, matched, missed)``
+    """
+    if not expected_facts:
+        return 1.0, [], []
+
+    # First try substring — avoids an API call for obvious matches
+    answer_lower = answer.lower()
+    matched: list[str] = []
+    to_judge: list[str] = []
+    for fact in expected_facts:
+        if fact.lower() in answer_lower:
+            matched.append(fact)
+        else:
+            to_judge.append(fact)
+
+    # Use LLM judge for remaining facts
+    for fact in to_judge:
+        try:
+            response = judge_client.chat.completions.create(
+                model=judge_model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a fact-matching judge. Given an ANSWER "
+                            "and a FACT, determine if the ANSWER contains "
+                            "the semantic equivalent of the FACT. The fact "
+                            "may be paraphrased, use different units, or "
+                            "different wording. Respond with only YES or NO."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": f"ANSWER:\n{answer}\n\nFACT:\n{fact}",
+                    },
+                ],
+                max_completion_tokens=8,
+                temperature=0,
+            )
+            verdict = (response.choices[0].message.content or "").strip().upper()
+            if verdict.startswith("YES"):
+                matched.append(fact)
+            else:
+                logger.debug("Judge: fact '%s' NOT found in answer.", fact)
+        except Exception as exc:
+            logger.warning("Judge call failed for fact '%s': %s", fact, exc)
+            # Fall through — fact counts as missed
+
+    missed = [f for f in expected_facts if f not in matched]
+    recall = len(matched) / len(expected_facts)
+    return recall, matched, missed
+
+
+def _get_judge_client() -> tuple[AzureOpenAI, str] | None:
+    """Create an AzureOpenAI client for the LLM-as-judge (GPT-5-nano).
+
+    Returns ``None`` if credentials cannot be loaded.
+    """
+    try:
+        creds = load_azure_generation_config(
+            section="OpenAI2",
+            model_key="GPT-5-nano",
+        )
+        client = AzureOpenAI(
+            azure_endpoint=creds["endpoint"],
+            api_key=creds["api_key"],
+            api_version=creds["api_version"],
+        )
+        return client, creds["model"]
+    except Exception as exc:
+        logger.warning("Could not load judge credentials: %s", exc)
+        return None
+
+
 def _doc_precision(
     cited: list[str],
     expected: list[str],
@@ -279,6 +382,7 @@ def evaluate_generation(
     generation_config: GenerationConfig | None = None,
     *,
     query_type_filter: str | None = None,
+    semantic_facts: bool = False,
 ) -> GenEvalReport:
     """Run generation evaluation against a golden test set.
 
@@ -293,6 +397,9 @@ def evaluate_generation(
         Generation configuration override.  Uses defaults when ``None``.
     query_type_filter:
         When set, only evaluate queries of this type.
+    semantic_facts:
+        When ``True``, use an LLM-as-judge (GPT-5-nano) for semantic
+        fact matching instead of substring matching.
 
     Returns
     -------
@@ -301,6 +408,16 @@ def evaluate_generation(
     ret_cfg = retrieval_config or RetrievalConfig()
     gen_cfg = generation_config or GenerationConfig()
     golden = _load_golden(golden_path)
+
+    # ── Optional LLM judge for semantic fact matching ───────────
+    judge_info: tuple[AzureOpenAI, str] | None = None
+    if semantic_facts:
+        judge_info = _get_judge_client()
+        if judge_info is None:
+            logger.warning(
+                "Semantic facts requested but judge unavailable — "
+                "falling back to substring matching."
+            )
 
     # Filter out comment entries and optionally by query type
     queries = [
@@ -321,6 +438,7 @@ def evaluate_generation(
             "max_context_tokens": ret_cfg.max_context_tokens,
             "golden_path": str(golden_path),
             "query_type_filter": query_type_filter,
+            "semantic_facts": semantic_facts,
         },
     )
 
@@ -352,7 +470,13 @@ def evaluate_generation(
         model_conf = result.model_confidence.value
 
         # ── Compute per-query metrics ───────────────────────────
-        fr, matched, missed = _fact_recall(result.answer, expected_facts)
+        if judge_info is not None:
+            fr, matched, missed = _semantic_fact_recall(
+                result.answer, expected_facts,
+                judge_info[0], judge_info[1],
+            )
+        else:
+            fr, matched, missed = _fact_recall(result.answer, expected_facts)
         dp = _doc_precision(cited_doc_ids, expected_doc_ids)
         dr = _doc_recall(cited_doc_ids, expected_doc_ids)
         abst_ok = result.abstained == expected_abstained

@@ -2,7 +2,7 @@
 
 Calls the Azure OpenAI ``/chat/completions`` endpoint via the ``openai``
 SDK with JSON-schema structured output.  Handles exponential-backoff
-retry for transient errors (429 / 5xx).
+retry for transient errors (429 / 5xx / empty-response).
 """
 
 from __future__ import annotations
@@ -27,8 +27,12 @@ from .prompt import get_response_schema
 logger = logging.getLogger(__name__)
 
 # ── Tunables ────────────────────────────────────────────────────
-_MAX_RETRIES: int = 3
+_MAX_RETRIES: int = 5
 _INITIAL_BACKOFF: float = 2.0  # seconds; doubles each retry
+
+
+class _EmptyResponseError(Exception):
+    """Model returned an empty content string — treat as transient."""
 
 
 # ── Public API ──────────────────────────────────────────────────
@@ -130,6 +134,10 @@ def _call_with_retry(
             response = client.chat.completions.create(**kwargs)
 
             content = response.choices[0].message.content or ""
+            if not content.strip():
+                raise _EmptyResponseError(
+                    "Model returned empty content"
+                )
             parsed: dict[str, Any] = json.loads(content)
 
             usage: dict[str, int] = {
@@ -145,7 +153,13 @@ def _call_with_retry(
             )
             return parsed, usage
 
-        except (RateLimitError, APITimeoutError, InternalServerError) as exc:
+        except (
+            RateLimitError,
+            APITimeoutError,
+            InternalServerError,
+            _EmptyResponseError,
+            json.JSONDecodeError,
+        ) as exc:
             if attempt == _MAX_RETRIES:
                 raise RuntimeError(
                     f"Generation failed after {_MAX_RETRIES} retries: {exc}"
@@ -161,8 +175,8 @@ def _call_with_retry(
             # Non-retryable API error.
             raise RuntimeError(f"Generation API error: {exc}") from exc
 
-        except (json.JSONDecodeError, IndexError, AttributeError) as exc:
-            # Malformed response — not retryable.
+        except (IndexError, AttributeError) as exc:
+            # Structurally broken response — not retryable.
             raise RuntimeError(
                 f"Failed to parse generation response: {exc}"
             ) from exc

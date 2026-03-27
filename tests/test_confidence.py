@@ -73,7 +73,7 @@ class TestAllSignalsHigh:
 
 
 class TestLowRetrieval:
-    """vector_score < 0.70 → retrieval_support = 0.4 → forces LOW."""
+    """vector_score < 0.65 → retrieval_support = 0.4 → forces LOW."""
 
     def test_low_retrieval_support(self):
         _, components = _compute(vector_scores=[0.50])
@@ -93,32 +93,36 @@ class TestLowRetrieval:
 
 
 # ════════════════════════════════════════════════════════════════
-# 3. Medium retrieval score → retrieval_support = 0.7
+# 3. Medium retrieval score → retrieval_support = 0.65 or 0.85
 # ════════════════════════════════════════════════════════════════
 
 
 class TestMediumRetrieval:
-    """vector_score in [0.70, 0.85) → retrieval_support = 0.7."""
+    """vector_score in [0.65, 0.85) → retrieval_support = 0.65 or 0.85."""
 
-    def test_retrieval_support_0_7(self):
+    def test_retrieval_support_0_85(self):
         _, components = _compute(vector_scores=[0.75])
-        assert components["retrieval_support"] == 0.7
+        assert components["retrieval_support"] == 0.85
+
+    def test_boundary_at_0_65(self):
+        _, components = _compute(vector_scores=[0.65])
+        assert components["retrieval_support"] == 0.65
 
     def test_boundary_at_0_70(self):
         _, components = _compute(vector_scores=[0.70])
-        assert components["retrieval_support"] == 0.7
+        assert components["retrieval_support"] == 0.65
 
     def test_boundary_below_0_85(self):
         _, components = _compute(vector_scores=[0.84])
-        assert components["retrieval_support"] == 0.7
+        assert components["retrieval_support"] == 0.85
 
-    def test_system_not_high_with_0_7_support(self):
-        """0.7 < 0.8 threshold → system cannot be HIGH."""
+    def test_system_high_with_0_85_support(self):
+        """0.85 ≥ 0.75 threshold → system can be HIGH."""
         final, _ = _compute(
             model=ConfidenceLevel.HIGH,
             vector_scores=[0.75],
         )
-        assert final != ConfidenceLevel.HIGH
+        assert final == ConfidenceLevel.HIGH
 
 
 # ════════════════════════════════════════════════════════════════
@@ -163,9 +167,7 @@ class TestPartialCoverage:
             coverage=0.5,             # citation_coverage = 0.5
         )
         assert components["citation_coverage"] == 0.5
-        # 0.5 ≥ 0.5 threshold → MEDIUM is possible
-        assert final in (ConfidenceLevel.MEDIUM, ConfidenceLevel.HIGH)
-        # But 0.5 < 0.8 → cannot be HIGH
+        # 0.5 < 0.75 threshold → cannot be HIGH
         assert final != ConfidenceLevel.HIGH
 
     def test_zero_coverage_forces_low(self):
@@ -210,11 +212,11 @@ class TestConservativeMin:
     def test_both_medium(self):
         final, _ = _compute(
             model=ConfidenceLevel.MEDIUM,
-            vector_scores=[0.75],  # retrieval_support = 0.7
+            vector_scores=[0.75],  # retrieval_support = 0.85
             coverage=0.8,
         )
-        # retrieval=0.7, coverage=0.8, verify=1.0 → all ≥ 0.5 → MEDIUM
-        # min(MEDIUM, MEDIUM) = MEDIUM
+        # retrieval=0.85, coverage=0.8, verify=1.0 → all ≥ 0.75 → HIGH
+        # min(MEDIUM, HIGH) = MEDIUM
         assert final == ConfidenceLevel.MEDIUM
 
 
