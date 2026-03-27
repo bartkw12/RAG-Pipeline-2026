@@ -11,12 +11,13 @@ import sys
 
 
 _SUBCOMMANDS = {
-    "ingest":   "src.cli.ingest",
-    "chunk":    "src.cli.chunk",
-    "embed":    "src.cli.embed",
-    "retrieve": "src.cli.retrieve",
-    "evaluate": "src.cli.evaluate",
-    "generate": "src.cli.generate",
+    "ingest":              "src.cli.ingest",
+    "chunk":               "src.cli.chunk",
+    "embed":               "src.cli.embed",
+    "retrieve":            "src.cli.retrieve",
+    "evaluate":            "src.cli.evaluate",
+    "generate":            "src.cli.generate",
+    "evaluate-generation": "src.cli.evaluate_generation",
 }
 
 
@@ -60,6 +61,8 @@ def main() -> int:
         from .evaluate import main as _main
     elif sub == "generate":
         from .generate import main as _main
+    elif sub == "evaluate-generation":
+        from .evaluate_generation import main as _main
     else:
         return 1
 
