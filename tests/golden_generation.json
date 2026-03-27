@@ -1,0 +1,609 @@
+{
+  "_meta": {
+    "description": "Golden test set for UC37.5 generation pipeline evaluation",
+    "version": "1.0.0",
+    "created": "2026-03-27",
+    "documents": {
+      "DIM-V_FVTR": "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+      "PAM_FVTR": "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+      "DIM_HwIRS": "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+    },
+    "query_type_counts": {
+      "exact_lookup": 7,
+      "scoped_semantic": 8,
+      "unconstrained_semantic": 6,
+      "cross_document": 4,
+      "abstention": 4,
+      "partial_answer": 3,
+      "adversarial_edge": 3
+    },
+    "evaluation_fields": {
+      "expected_facts": "List of factual strings that MUST appear (case-insensitive substring) in the answer",
+      "expected_doc_ids": "Document IDs that should be cited in the response",
+      "expected_abstained": "Whether the pipeline should abstain entirely",
+      "expected_partial": "Whether the pipeline should flag a partial answer",
+      "min_confidence": "Minimum acceptable system_confidence level (LOW < MEDIUM < HIGH)",
+      "notes": "Human context for the test case maintainer"
+    }
+  },
+  "queries": [
+
+    {"_comment": "═══════ EXACT LOOKUP (7 queries) ═══════"},
+
+    {
+      "query": "FVTR_MECH_01",
+      "query_type": "exact_lookup",
+      "expected_facts": [
+        "labelling",
+        "assembly"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "DIM-V labelling+assembly and PAM plugging+unplugging. Exists in both FVTR documents."
+    },
+
+    {
+      "query": "FVTR_FUNC_13",
+      "query_type": "exact_lookup",
+      "expected_facts": [
+        "threshold",
+        "timing"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "DIM-V Input Threshold and Timing test — header + data tables."
+    },
+
+    {
+      "query": "FVTR_FKT_14",
+      "query_type": "exact_lookup",
+      "expected_facts": [
+        "PWM",
+        "output"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "PAM PWM output test — frequency and duty-cycle verification."
+    },
+
+    {
+      "query": "FVTR_HVT_01",
+      "query_type": "exact_lookup",
+      "expected_facts": [
+        "high voltage",
+        "pass"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "DIM-V high voltage test — 2000V AC, leakage < 0.5mA."
+    },
+
+    {
+      "query": "FVTR_SAF_01",
+      "query_type": "exact_lookup",
+      "expected_facts": [
+        "safety"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "DIM-V safety test case. May also appear in PAM."
+    },
+
+    {
+      "query": "FVTR_REL_01",
+      "query_type": "exact_lookup",
+      "expected_facts": [
+        "reliab"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "DIM-V reliability test — MTBF analysis. May also match PAM FVTR_REL_01."
+    },
+
+    {
+      "query": "FVTR_OPT_01",
+      "query_type": "exact_lookup",
+      "expected_facts": [
+        "optical",
+        "visual"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "PAM-only optical/visual inspection test."
+    },
+
+    {"_comment": "═══════ SCOPED SEMANTIC (8 queries) ═══════"},
+
+    {
+      "query": "What are the DIM-V input voltage thresholds for the 96V/110V variant?",
+      "query_type": "scoped_semantic",
+      "expected_facts": [
+        "60",
+        "24",
+        "VIH",
+        "VIL"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "96V/110V variant: VIH≤60V, VIL≥24V. Present in both DIM-V FVTR and HwIRS."
+    },
+
+    {
+      "query": "What is the PAM analogue current output accuracy and load requirements?",
+      "query_type": "scoped_semantic",
+      "expected_facts": [
+        "1.5%",
+        "800"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "PAM analogue current output: <1.5% accuracy, 800Ω max load, 12-bit DAC."
+    },
+
+    {
+      "query": "What are the DIM-V power consumption and supply voltage specifications?",
+      "query_type": "scoped_semantic",
+      "expected_facts": [
+        "5V",
+        "24V",
+        "8W"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "DIM-V: 5V DC + 24V DC supply, <8W total consumption."
+    },
+
+    {
+      "query": "Describe the PAM disconnect relay architecture and checkback mechanism",
+      "query_type": "scoped_semantic",
+      "expected_facts": [
+        "relay",
+        "2oo2",
+        "checkback"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "PAM: K1+K2 FAR-type relays, 3NO+1NC, 2oo2 AND logic, checkback by both replicas."
+    },
+
+    {
+      "query": "What are the DIM-V fast input timing requirements?",
+      "query_type": "scoped_semantic",
+      "expected_facts": [
+        "300",
+        "50"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "Fast 24V semiconductor input: detect ≥300µs pulses, tON≤50µs, tOFF≤100µs."
+    },
+
+    {
+      "query": "What ESD protection does the DIM-V module have?",
+      "query_type": "scoped_semantic",
+      "expected_facts": [
+        "ESD",
+        "strip",
+        "12mm"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "ESD strip: two segments, 12mm gap (>2mm slider width), rear segment to GND."
+    },
+
+    {
+      "query": "What is the PAM PWM output frequency and duty cycle range?",
+      "query_type": "scoped_semantic",
+      "expected_facts": [
+        "400",
+        "2500",
+        "5%",
+        "95%"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "PWM: 400-2500Hz (10Hz steps), duty 5%-95%, 12-bit DAC."
+    },
+
+    {
+      "query": "What are the DIM-V EEPROM storage specifications?",
+      "query_type": "scoped_semantic",
+      "expected_facts": [
+        "1Mbit",
+        "I2C",
+        "EEPROM"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "1Mbit I2C EEPROM per replica, stores type ID (16-bit + 16-bit CRC)."
+    },
+
+    {"_comment": "═══════ UNCONSTRAINED SEMANTIC (6 queries) ═══════"},
+
+    {
+      "query": "What modules have been tested in the FVTR documents and what are their MTBF values?",
+      "query_type": "unconstrained_semantic",
+      "expected_facts": [
+        "DIM",
+        "PAM",
+        "100,000",
+        "678"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "DIM-V MTBF >100,000hr, PAM MTBF 678,656hr. Both in FVTR docs."
+    },
+
+    {
+      "query": "What high voltage tests were performed and what were the results?",
+      "query_type": "unconstrained_semantic",
+      "expected_facts": [
+        "2000",
+        "pass"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "Both DIM-V and PAM have HVT. DIM-V: 2000V AC. PAM: up to 2828V DC."
+    },
+
+    {
+      "query": "Describe all connector types used across the TOP platform modules",
+      "query_type": "unconstrained_semantic",
+      "expected_facts": [
+        "DIN41612",
+        "F48"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "LOW",
+      "notes": "DIN41612 Type-F48 appears in all three docs. Broad query — may be partial."
+    },
+
+    {
+      "query": "What are all the board variants and their part numbers?",
+      "query_type": "unconstrained_semantic",
+      "expected_facts": [
+        "7HA",
+        "AAAA"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": true,
+      "min_confidence": "LOW",
+      "notes": "DIM-V: 7HA-02941-XXXX (6 variants). PAM: 7HA-02944-XXXX. Very broad — likely partial."
+    },
+
+    {
+      "query": "What safety-related components are used and why?",
+      "query_type": "unconstrained_semantic",
+      "expected_facts": [
+        "MELF",
+        "0204",
+        "resistor"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "MELF 0204 resistors for short-circuit and replica separation in both DIM-V and PAM."
+    },
+
+    {
+      "query": "What are the physical dimensions and mechanical form factor of the modules?",
+      "query_type": "unconstrained_semantic",
+      "expected_facts": [
+        "160",
+        "100",
+        "6HP"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "Both DIM-V and PAM: 160mm x 100mm x 6HP (3U Eurocard). All three docs."
+    },
+
+    {"_comment": "═══════ CROSS-DOCUMENT (4 queries) ═══════"},
+
+    {
+      "query": "How does the HwIRS requirement for 2oo2 redundancy trace to the FVTR test results?",
+      "query_type": "cross_document",
+      "expected_facts": [
+        "2oo2",
+        "replica"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "HwIRS defines 2oo2 checked-redundant architecture, FVTR tests validate both replicas."
+    },
+
+    {
+      "query": "Compare the wetting current specifications in the HwIRS against the measured values in the FVTR for DIM-V",
+      "query_type": "cross_document",
+      "expected_facts": [
+        "wetting",
+        "current",
+        "mA"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "HwIRS specifies wetting current per variant (e.g. 10.0/2.0 mA for AAAA), FVTR verifies."
+    },
+
+    {
+      "query": "What Latent Failure Detection capabilities does the DIM-V have and how are they tested?",
+      "query_type": "cross_document",
+      "expected_facts": [
+        "LFD",
+        "latent"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "LFD: threshold decrease, filter time constant, false transitions, status lock-up, short circuits."
+    },
+
+    {
+      "query": "What galvanic isolation and insulation coordination requirements exist for the DIM-V and how were they verified?",
+      "query_type": "cross_document",
+      "expected_facts": [
+        "isolation",
+        "2000"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "HwIRS: galvanic isolation per INSUCO_TOP. FVTR: 2000V AC HVT test verifies isolation."
+    },
+
+    {"_comment": "═══════ ABSTENTION (4 queries) ═══════"},
+
+    {
+      "query": "What are the DIM-V EMC test results and radiated emissions measurements?",
+      "query_type": "abstention",
+      "expected_facts": [],
+      "expected_doc_ids": [],
+      "expected_abstained": true,
+      "expected_partial": false,
+      "min_confidence": "LOW",
+      "notes": "EMC testing (EN 50121) is referenced as a standard but NO EMC test results are in any of the three documents. Must abstain."
+    },
+
+    {
+      "query": "What is the software version running on the DIM-V microcontroller?",
+      "query_type": "abstention",
+      "expected_facts": [],
+      "expected_doc_ids": [],
+      "expected_abstained": true,
+      "expected_partial": false,
+      "min_confidence": "LOW",
+      "notes": "No software version or firmware details appear in any of the three documents. Must abstain."
+    },
+
+    {
+      "query": "What is the operating temperature range for the TOP platform subrack?",
+      "query_type": "abstention",
+      "expected_facts": [],
+      "expected_doc_ids": [],
+      "expected_abstained": true,
+      "expected_partial": false,
+      "min_confidence": "LOW",
+      "notes": "Subrack temperature specs are in the QTR (7HA-02950-AAAA), which is NOT ingested. Only 45°C reference in MTBF context. Must abstain or flag insufficient evidence."
+    },
+
+    {
+      "query": "What are the DO-254 compliance details for the FPGA used in the DIM-V?",
+      "query_type": "abstention",
+      "expected_facts": [],
+      "expected_doc_ids": [],
+      "expected_abstained": true,
+      "expected_partial": false,
+      "min_confidence": "LOW",
+      "notes": "No FPGA or DO-254 content exists in any document. Completely out of scope — must abstain."
+    },
+
+    {"_comment": "═══════ PARTIAL ANSWER (3 queries) ═══════"},
+
+    {
+      "query": "What are all the DIM-V input voltage thresholds for every variant, and what are the corresponding power dissipation values per channel?",
+      "query_type": "partial_answer",
+      "expected_facts": [
+        "VIH",
+        "VIL"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": true,
+      "min_confidence": "LOW",
+      "notes": "Voltage thresholds are in both docs, but per-channel power dissipation is not documented anywhere. Must flag partial."
+    },
+
+    {
+      "query": "List the complete bill of materials for the PAM module and indicate which components are safety-critical",
+      "query_type": "partial_answer",
+      "expected_facts": [
+        "MELF",
+        "safety"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": true,
+      "min_confidence": "LOW",
+      "notes": "Safety-critical components (MELF resistors, TVS diodes) are listed, but a complete BOM is not in the FVTR. Must flag partial."
+    },
+
+    {
+      "query": "What are the PAM analogue input specs and the calibration procedure used during manufacturing?",
+      "query_type": "partial_answer",
+      "expected_facts": [
+        "0-20",
+        "10-bit"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": true,
+      "min_confidence": "LOW",
+      "notes": "Analogue input specs (0-20V/0-20mA, 10-bit, <2% accuracy) are present; calibration procedure is not documented."
+    },
+
+    {"_comment": "═══════ ADVERSARIAL / EDGE CASES (3 queries) ═══════"},
+
+    {
+      "query": "The DIM-V module has 64 digital inputs and operates at 48V. Confirm this.",
+      "query_type": "adversarial_edge",
+      "expected_facts": [
+        "16",
+        "8"
+      ],
+      "expected_doc_ids": [
+        "8250cded0140bf39e80a93bc21040baa473c3d5e672edd37ddd83be9a482c2a9",
+        "eceebed4d7a903ef3500ea30b96aaf3571a000156497b07c98aef6c410ae942f"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "Adversarial: user states wrong facts (64 inputs). Correct answer: 16 inputs (or 8 vital). Model must correct, not confirm."
+    },
+
+    {
+      "query": "What is the PAM MTBF? I heard it was 50,000 hours.",
+      "query_type": "adversarial_edge",
+      "expected_facts": [
+        "678"
+      ],
+      "expected_doc_ids": [
+        "f4b48797a6a272a5a74f96ceb5a2133338a7606c541478a97f3d1528b0558143"
+      ],
+      "expected_abstained": false,
+      "expected_partial": false,
+      "min_confidence": "MEDIUM",
+      "notes": "Adversarial: user suggests wrong MTBF (50,000). Correct: 678,656 hours. Model must cite the document, not agree with user."
+    },
+
+    {
+      "query": "HW-IRS_DIM_VI_999",
+      "query_type": "adversarial_edge",
+      "expected_facts": [],
+      "expected_doc_ids": [],
+      "expected_abstained": true,
+      "expected_partial": false,
+      "min_confidence": "LOW",
+      "notes": "Non-existent requirement ID. Formatted like a real one but _999 does not exist in HwIRS. Must abstain."
+    }
+  ]
+}
