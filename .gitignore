@@ -30,6 +30,10 @@ htmlcov/
 *.ipynb
 *.log
 
+# Test results (ephemeral, not source)
+tests/results/**
+!tests/results/**/.gitkeep
+
 # Generated/data folders
 Archive/
 cache/
