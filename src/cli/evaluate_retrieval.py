@@ -6,24 +6,24 @@ stratified IR metrics (Precision@k, Recall@k, MRR, nDCG, Hit Rate).
 Usage examples::
 
     # Default evaluation — stratified table
-    python -m src.cli.evaluate
+    python -m src.cli evaluate-retrieval
 
     # Custom golden set path
-    python -m src.cli.evaluate --golden tests/golden_retrieval.json
+    python -m src.cli evaluate-retrieval --golden tests/golden_retrieval.json
 
     # Per-query breakdown
-    python -m src.cli.evaluate --verbose
+    python -m src.cli evaluate-retrieval --verbose
 
     # Compare rerankers
-    python -m src.cli.evaluate --reranker none
-    python -m src.cli.evaluate --reranker cross-encoder
-    python -m src.cli.evaluate --reranker llm
+    python -m src.cli evaluate-retrieval --reranker none
+    python -m src.cli evaluate-retrieval --reranker cross-encoder
+    python -m src.cli evaluate-retrieval --reranker llm
 
     # JSON output for scripting
-    python -m src.cli.evaluate --json
+    python -m src.cli evaluate-retrieval --json
 
     # Only evaluate a single query type
-    python -m src.cli.evaluate --type exact_lookup
+    python -m src.cli evaluate-retrieval --type exact_lookup
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from pathlib import Path
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="evaluate",
+        prog="evaluate-retrieval",
         description=(
             "Evaluate the retrieval pipeline against a golden test set.\n\n"
             "Computes Precision@k, Recall@k, MRR, nDCG, and Hit Rate\n"
