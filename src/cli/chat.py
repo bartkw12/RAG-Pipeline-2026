@@ -128,6 +128,27 @@ def _configure_logging(*, verbose: bool = False, quiet: bool = False) -> None:
     )
 
 
+# ── Banner ──────────────────────────────────────────────────────
+
+_SLASH_HELP = (
+    "/json   — toggle JSON output mode\n"
+    "/text   — force human-readable output\n"
+    "/help   — show this list\n"
+    "/clear  — clear the terminal\n"
+    "/stats  — show query count and cumulative time\n"
+    "exit    — quit the session"
+)
+
+
+def _print_banner(model: str, vector_count: int) -> None:
+    """Print a one-time startup banner with session info."""
+    print(
+        f"\nUC37 RAG Chat ({model})  —  {vector_count} vectors loaded\n"
+        f"Type a question, or /help for commands.  'exit' to quit.\n"
+        f"{'━' * 60}"
+    )
+
+
 # ── Placeholder — remaining functions added in subsequent steps ─
 
 
@@ -137,8 +158,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     _configure_logging(verbose=args.verbose, quiet=args.quiet)
 
-    # TODO: _print_banner, _handle_slash_command, REPL loop
-    print("chat subcommand registered — REPL not yet implemented.")
+    # Eagerly load the embedding store so we can show vector count
+    from ..embedding.store import EmbeddingStore
+    store = EmbeddingStore()
+    _print_banner(args.model, store.count())
+
+    # TODO: _handle_slash_command, REPL loop
+    print("REPL loop not yet implemented.")
     return 0
 
 
