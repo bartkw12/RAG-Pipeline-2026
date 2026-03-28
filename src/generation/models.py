@@ -43,8 +43,14 @@ class GenerationConfig:
     support the default value of 1.  For non-reasoning models, lower
     values (0.0–0.2) favour consistency."""
 
-    max_output_tokens: int = 2048
-    """Maximum tokens the model may generate in a single response."""
+    max_output_tokens: int = 16_384
+    """Maximum tokens the model may generate in a single response.
+
+    For reasoning models (GPT-5 family) this budget covers *both*
+    internal chain-of-thought reasoning tokens **and** the visible
+    output.  Structured JSON output with ``strict: true`` adds
+    substantial reasoning overhead, so keep this well above the
+    expected output size."""
 
     reasoning_effort: str | None = None
     """Optional reasoning-effort control for GPT-5 family models

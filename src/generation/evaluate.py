@@ -308,8 +308,7 @@ def _semantic_fact_recall(
                         "content": f"ANSWER:\n{answer}\n\nFACT:\n{fact}",
                     },
                 ],
-                max_completion_tokens=8,
-                temperature=0,
+                max_completion_tokens=64,
             )
             verdict = (response.choices[0].message.content or "").strip().upper()
             if verdict.startswith("YES"):

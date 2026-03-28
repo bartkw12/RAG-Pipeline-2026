@@ -76,10 +76,10 @@ def _build_parser() -> argparse.ArgumentParser:
     gen.add_argument(
         "--max-tokens",
         type=int,
-        default=2048,
+        default=16_384,
         metavar="N",
         dest="max_output_tokens",
-        help="Max output tokens (default: 2048).",
+        help="Max completion tokens incl. reasoning (default: 16384).",
     )
     gen.add_argument(
         "--reasoning-effort",
