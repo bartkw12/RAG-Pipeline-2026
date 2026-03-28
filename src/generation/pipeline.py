@@ -171,6 +171,7 @@ def generate_from_context(
         model_conf,
         retrieval_result.scored_chunks,
         verification,
+        strategy=retrieval_result.strategy,
     )
 
     # ── 8. Assemble result ──────────────────────────────────────

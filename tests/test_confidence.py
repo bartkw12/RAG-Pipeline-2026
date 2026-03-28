@@ -26,6 +26,7 @@ def _compute(
     all_resolved: bool = True,
     abstention_consistent: bool = True,
     contains_unmapped: bool = False,
+    strategy: str = "",
 ) -> tuple[ConfidenceLevel, dict[str, float]]:
     """Shorthand wrapper around ``compute_system_confidence``."""
     chunks = [make_scored_chunk(vs) for vs in (vector_scores or [0.90])]
@@ -35,7 +36,7 @@ def _compute(
         abstention_consistent=abstention_consistent,
         contains_unmapped_citations=contains_unmapped,
     )
-    return compute_system_confidence(model, chunks, verification)
+    return compute_system_confidence(model, chunks, verification, strategy=strategy)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -255,3 +256,48 @@ class TestEdgeCases:
             "citation_coverage",
             "verification_pass",
         }
+
+
+# ════════════════════════════════════════════════════════════════
+# 8. Exact-lookup strategy override
+# ════════════════════════════════════════════════════════════════
+
+
+class TestExactLookupOverride:
+    """strategy='exact_lookup' → retrieval_support = 1.0 regardless of vector score."""
+
+    def test_retrieval_support_forced_to_1(self):
+        """Zero vector score still gives retrieval_support=1.0."""
+        _, components = _compute(
+            vector_scores=[0.0],
+            strategy="exact_lookup",
+        )
+        assert components["retrieval_support"] == 1.0
+
+    def test_system_high_when_all_signals_good(self):
+        """exact_lookup + full coverage + verification → HIGH."""
+        final, _ = _compute(
+            model=ConfidenceLevel.HIGH,
+            vector_scores=[0.0],
+            coverage=1.0,
+            strategy="exact_lookup",
+        )
+        assert final == ConfidenceLevel.HIGH
+
+    def test_model_medium_caps_final(self):
+        """System is HIGH but model says MEDIUM → final=MEDIUM."""
+        final, _ = _compute(
+            model=ConfidenceLevel.MEDIUM,
+            vector_scores=[0.0],
+            coverage=1.0,
+            strategy="exact_lookup",
+        )
+        assert final == ConfidenceLevel.MEDIUM
+
+    def test_no_override_for_other_strategies(self):
+        """Non-exact strategies still use vector-score logic."""
+        _, components = _compute(
+            vector_scores=[0.0],
+            strategy="scoped_semantic",
+        )
+        assert components["retrieval_support"] == 0.4

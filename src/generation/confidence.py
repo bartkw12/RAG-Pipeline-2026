@@ -19,6 +19,8 @@ def compute_system_confidence(
     model_confidence: ConfidenceLevel,
     scored_chunks: list,
     verification: VerificationResult,
+    *,
+    strategy: str = "",
 ) -> tuple[ConfidenceLevel, dict[str, float]]:
     """Compute hybrid confidence from retrieval + verification signals.
 
@@ -32,6 +34,11 @@ def compute_system_confidence(
         ``vector_score`` attribute.
     verification:
         The ``VerificationResult`` from ``verify_generation()``.
+    strategy:
+        Retrieval strategy name (e.g. ``"exact_lookup"``).  When the
+        strategy is ``exact_lookup`` the identifier matched by
+        definition, so ``retrieval_support`` is set to 1.0 regardless
+        of the vector score.
 
     Returns
     -------
@@ -50,7 +57,10 @@ def compute_system_confidence(
     else:
         best_vector = 0.0
 
-    if best_vector >= 0.85:
+    if strategy == "exact_lookup":
+        # Identifier matched by definition — no vector search involved.
+        retrieval_support = 1.0
+    elif best_vector >= 0.85:
         retrieval_support = 1.0
     elif best_vector >= 0.75:
         retrieval_support = 0.85
