@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import sys
+import time
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -206,11 +207,79 @@ def main(argv: list[str] | None = None) -> int:
 
     # Eagerly load the embedding store so we can show vector count
     from ..embedding.store import EmbeddingStore
+    from ..generation.models import GenerationConfig
+    from ..generation.pipeline import generate
+    from ..retrieval.models import RetrievalConfig
+
     store = EmbeddingStore()
     _print_banner(args.model, store.count())
 
-    # TODO: _handle_slash_command, REPL loop
-    print("REPL loop not yet implemented.")
+    # ── Build configs (once) ────────────────────────────────────
+    retrieval_config = RetrievalConfig(
+        top_k_broad=args.broad,
+        top_k_final=args.top_k,
+        reranker_type=args.reranker,
+        expand_abbreviations=not args.no_abbreviations,
+    )
+    generation_config = GenerationConfig(
+        model=args.model,
+        temperature=args.temperature,
+        max_output_tokens=args.max_output_tokens,
+    )
+
+    # ── Session state ───────────────────────────────────────────
+    state: dict = {
+        "json_output": args.json_output,
+        "query_count": 0,
+        "cumulative_time": 0.0,
+    }
+
+    # ── REPL loop ───────────────────────────────────────────────
+    try:
+        while True:
+            try:
+                line = input("\n> ").strip()
+            except EOFError:
+                break
+
+            if not line:
+                continue
+
+            if line.lower() in ("exit", "quit", "/exit", "/quit"):
+                break
+
+            if line.startswith("/"):
+                _handle_slash_command(line, state)
+                continue
+
+            # ── Run generation pipeline ─────────────────────────
+            try:
+                t0 = time.perf_counter()
+                result = generate(line, retrieval_config, generation_config)
+                elapsed = time.perf_counter() - t0
+
+                state["query_count"] += 1
+                state["cumulative_time"] += elapsed
+            except Exception:
+                logging.exception("Pipeline failed")
+                continue
+
+            if result.error:
+                print(f"Error: {result.error}", file=sys.stderr)
+                continue
+
+            # ── Render output ───────────────────────────────────
+            print()
+            if state["json_output"]:
+                print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+            else:
+                print(result.to_text())
+            print(f"{'─' * 60}")
+
+    except KeyboardInterrupt:
+        pass
+
+    print("\nGoodbye.")
     return 0
 
 
