@@ -1,6 +1,6 @@
 """CLI dispatcher — routes ``python -m src.cli <subcommand>`` to the
 correct module (ingest, chunk, embed, retrieve, evaluate-retrieval,
-generate, evaluate-generation).
+generate, evaluate-generation, chat).
 
 When run *without* a subcommand, defaults to **ingest** for
 backwards-compatibility.
@@ -19,6 +19,7 @@ _SUBCOMMANDS = {
     "evaluate-retrieval":  "src.cli.evaluate_retrieval",
     "generate":            "src.cli.generate",
     "evaluate-generation": "src.cli.evaluate_generation",
+    "chat":                "src.cli.chat",
 }
 
 
@@ -64,6 +65,8 @@ def main() -> int:
         from .generate import main as _main
     elif sub == "evaluate-generation":
         from .evaluate_generation import main as _main
+    elif sub == "chat":
+        from .chat import main as _main
     else:
         return 1
 
