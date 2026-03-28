@@ -149,7 +149,53 @@ def _print_banner(model: str, vector_count: int) -> None:
     )
 
 
-# ── Placeholder — remaining functions added in subsequent steps ─
+# ── Slash-command handler ────────────────────────────────────────
+
+
+def _handle_slash_command(line: str, state: dict) -> bool:
+    """Handle a ``/``-prefixed runtime command.
+
+    Mutates *state* in-place and returns ``True`` if *line* was
+    a recognised command (caller should skip generation).
+    """
+    cmd = line.lower().strip()
+
+    if cmd == "/json":
+        state["json_output"] = not state["json_output"]
+        mode = "JSON" if state["json_output"] else "text"
+        print(f"[output format: {mode}]")
+        return True
+
+    if cmd == "/text":
+        state["json_output"] = False
+        print("[output format: text]")
+        return True
+
+    if cmd == "/help":
+        print(_SLASH_HELP)
+        return True
+
+    if cmd == "/clear":
+        os.system("cls" if os.name == "nt" else "clear")
+        return True
+
+    if cmd == "/stats":
+        n = state["query_count"]
+        t = state["cumulative_time"]
+        avg = (t / n) if n else 0.0
+        print(
+            f"Queries: {n}  |  "
+            f"Total time: {t:.1f}s  |  "
+            f"Avg: {avg:.1f}s/query"
+        )
+        return True
+
+    # Unknown slash command
+    print(f"Unknown command: {cmd}  (type /help for options)")
+    return True
+
+
+# ── REPL entry point ────────────────────────────────────────────
 
 
 def main(argv: list[str] | None = None) -> int:
